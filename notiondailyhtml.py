@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 # === Notion APIの設定 ===
 load_dotenv()
+HTML_ROOT = os.getenv("HTML_ROOT") # HTMLファイルのルートパス
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")  # Notionのインテグレーションで取得
 DATABASE_ID = os.getenv("DATABASE_ID")  # Notionの日記データベースID
 HEADERS = {
@@ -132,7 +133,7 @@ def generate_html(date, entries):
     html_content += "</body></html>"
     
     # ファイルに書き出し
-    file_path = f"{date}.html"
+    file_path = f"{HTML_ROOT}/{date}.html"
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 # === Notion APIの設定 ===
 load_dotenv()
+HTML_ROOT = os.getenv("HTML_ROOT") # HTMLファイルのルートパス
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")  # Notionのインテグレーションで取得
 DATABASE_ID = os.getenv("DATABASE_ID")  # Notionの日記データベースID
 HEADERS = {
@@ -172,7 +173,7 @@ def generate_topic_pages(topics):
 
         html_content += "</body></html>"
 
-        with open(topic_filename, "w", encoding="utf-8") as f:
+        with open(f"{HTML_ROOT}/{topic_filename}", "w", encoding="utf-8") as f:
             f.write(html_content)
 
         print(f"トピックページ {topic_filename} を作成しました")

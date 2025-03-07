@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 # === Notion APIの設定 ===
 load_dotenv()
+HTML_ROOT = os.getenv("HTML_ROOT") # HTMLファイルのルートパス
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")  # Notionのインテグレーションで取得
 DATABASE_ID = os.getenv("DATABASE_ID")  # Notionの日記データベースID
 HEADERS = {
@@ -152,7 +153,7 @@ def generate_top_page(entries_by_date):
     
     html_content += "</body></html>"
     
-    with open("index.html", "w", encoding="utf-8") as f:
+    with open(f"{HTML_ROOT}/index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
     
     print("トップページ (index.html) を作成しました")
