@@ -1,5 +1,6 @@
 generate
 *.html
+*.json
 
 .env
 .venv
