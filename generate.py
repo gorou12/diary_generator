@@ -17,6 +17,19 @@ HEADERS = {
     "Notion-Version": "2022-06-28"
 }
 
+def get_navigation(is_subpage=False):
+    """ページごとの適切なナビゲーションを取得"""
+    prefix = "../" if is_subpage else ""
+    return f"""
+    <nav>
+        <ul>
+            <li><a href="{prefix}index.html">トップページ</a></li>
+            <li><a href="{prefix}topics.html">トピック一覧</a></li>
+            <li><a href="{prefix}dates.html">日付一覧</a></li>
+        </ul>
+    </nav>
+    """
+
 def fetch_notion_data():
     """Notion API からページ一覧と本文を一括取得し、一時保存する"""
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
@@ -129,6 +142,7 @@ def generate_top_page(data):
     </head>
     <body>
         <h1>サイトタイトル（未定）</h1>
+        {get_navigation()}
         {daily_entries}
     </body>
     </html>
@@ -171,6 +185,7 @@ def generate_topic_pages(data):
         </head>
         <body>
             <h1>サイトタイトル（未定）</h1>
+            {get_navigation(is_subpage=True)}
             <h2>{topic}</h2>
             {entries_html}
         </body>
@@ -210,6 +225,7 @@ def generate_date_pages(data):
         </head>
         <body>
             <h1>サイトタイトル（未定）</h1>
+            {get_navigation(is_subpage=True)}
             <h2>{date}</h2>
             {entries_html}
         </body>
@@ -220,9 +236,70 @@ def generate_date_pages(data):
             f.write(html_content)
     print("✅ 日付ページを生成しました！")
 
+def generate_topics_index(data):
+    """トピック一覧ページを生成する"""
+    print("✅ トピック一覧ページ生成")
+    topics = set()
+    for page in data:
+        for topic in page["topics"]:
+            topics.add(topic["title"])
+    
+    topics_html = "".join(f'<li><a href="topics/{topic}.html">{topic}</a></li>' for topic in sorted(topics))
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <title>トピック一覧</title>
+    </head>
+    <body>
+        <h1>トピック一覧</h1>
+        {get_navigation()}
+        <ul>
+            {topics_html}
+        </ul>
+    </body>
+    </html>
+    """
+    
+    with open("output/topics.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("✅ トピック一覧ページを生成しました！")
+
+def generate_dates_index(data):
+    """日付一覧ページを生成する"""
+    print("✅ 日付一覧ページ生成")
+    dates = sorted({page["date"] for page in data}, reverse=True)
+    
+    dates_html = "".join(f'<li><a href="dates/{date}.html">{date}</a></li>' for date in dates)
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <title>日付一覧</title>
+    </head>
+    <body>
+        <h1>日付一覧</h1>
+        {get_navigation()}
+        <ul>
+            {dates_html}
+        </ul>
+    </body>
+    </html>
+    """
+    
+    with open("output/dates.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("✅ 日付一覧ページを生成しました！")
+
 if __name__ == "__main__":
     data = fetch_notion_data()
     if data:
         generate_top_page(data)
         generate_topic_pages(data)
         generate_date_pages(data)
+        generate_topics_index(data)
+        generate_dates_index(data)
