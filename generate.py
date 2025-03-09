@@ -4,7 +4,7 @@ import os
 import re
 import argparse
 from dotenv import load_dotenv
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 # .env ファイルを読み込む
 load_dotenv()
@@ -73,7 +73,7 @@ def paginate(items, page, base_filename="index"):
     pagination = f"<div class='pagination'>{prev_link} {next_link}</div>" if total_pages > 1 else ""
     return page_items, pagination, total_pages
 
-def generate_paginated_list(title, items, base_filename):
+def generate_paginated_list(title, items, base_filename, additional_html=""):
     """ページネーションを適用したリストページを生成"""
     total_pages = (len(items) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
     for page in range(1, total_pages + 1):
@@ -81,7 +81,7 @@ def generate_paginated_list(title, items, base_filename):
         content = "".join(f'<li><a href="{base_filename}/{item}.html">{item}</a></li>' for item in paginated_items) + pagination
         
         file_name = f"{base_filename}_{page}.html" if page > 1 else f"{base_filename}.html"
-        html_content = generate_html(title, f"<h2>{title}</h2><ul>{content}</ul>")
+        html_content = generate_html(title, f"<h2>{title}</h2>{additional_html}<ul>{content}</ul>")
         
         with open(f"output/{file_name}", "w", encoding="utf-8") as f:
             f.write(html_content)
@@ -295,17 +295,28 @@ def generate_date_pages(data):
     print("✅ 日付ページを生成しました！")
 
 def generate_topics_index(data):
-    """トピック一覧ページを生成する"""
-    print("✅ トピック一覧ページ生成")
-    topics = set()
+    """トピック一覧ページを生成（ページネーション対応）"""
+    topic_counter = Counter()
     for page in data:
-        for topic in page["topics"]:
-            topics.add(topic["title"])
+        for topic in page.get("topics", []):
+            topic_counter[topic["title"]] += 1
     
-    generate_paginated_list("トピック一覧", sorted(topics), "topics")
+    sorted_topics = [topic for topic, _ in topic_counter.most_common()]
+    
+    ranking_html = "".join(f'<li><a href="topics/{topic}.html">{topic} ({count}回)</a></li>' for topic, count in topic_counter.most_common(10))
+    ranking_section = f"""
+    <div class="popular_topics">
+    <h3>人気のトピック</h3>
+    <ul>
+        {ranking_html}
+    </ul>
+    </div>
+    """
+    
+    generate_paginated_list("トピック一覧", sorted_topics, "topics", ranking_section)
 
 def generate_dates_index(data):
-    """日付一覧ページを生成する"""
+    """日付一覧ページを生成（ページネーション対応）"""
     print("✅ 日付一覧ページ生成")
     dates = sorted({page["date"] for page in data}, reverse=True)
     generate_paginated_list("日付一覧", sorted(dates, reverse=True), "dates")
