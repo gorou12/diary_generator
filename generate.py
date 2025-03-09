@@ -2,6 +2,7 @@ import requests
 import json
 import os
 import re
+import argparse
 from dotenv import load_dotenv
 from collections import defaultdict
 
@@ -58,8 +59,15 @@ def get_navigation(is_subpage=False):
 
 
 
-def fetch_notion_data():
-    """Notion API からページ一覧と本文を一括取得し、一時保存する"""
+def fetch_notion_data(use_cache=False):
+    """Notion API からデータを取得する（キャッシュ対応）"""
+    CACHE_FILE = "data.json"
+    if use_cache and os.path.exists(CACHE_FILE):
+        print("✅ キャッシュからデータを読み込みます")
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    print("🔄 Notion API からデータを取得中...")
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
     response = requests.post(url, headers=HEADERS)
     
@@ -84,7 +92,7 @@ def fetch_notion_data():
                 "topics": topics
             })
         
-        with open("data.json", "w", encoding="utf-8") as f:
+        with open(CACHE_FILE, "w", encoding="utf-8") as f:
             json.dump(all_pages, f, ensure_ascii=False, indent=4)
         print("✅ Notionデータ取得＆キャッシュ完了")
         return all_pages
@@ -292,8 +300,13 @@ def generate_dates_index(data):
     print("✅ 日付一覧ページを生成しました！")
 
 if __name__ == "__main__":
-    data = fetch_notion_data()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--use-cache", action="store_true", help="キャッシュを使用する")
+    args = parser.parse_args()
+    
+    data = fetch_notion_data(use_cache=args.use_cache)
     if data:
+        print("✅ データ取得完了！")
         generate_top_page(data)
         generate_topic_pages(data)
         generate_date_pages(data)
