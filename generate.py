@@ -18,6 +18,9 @@ HEADERS = {
     "Notion-Version": "2022-06-28"
 }
 
+CACHE_FILE = "data.json" # Notionデータの仮置き場所
+ITEMS_PER_PAGE = 10 # 1ページに表示する最大数
+
 def generate_html(title, content, is_subpage=False):
     """共通HTMLテンプレート"""
     prefix = "../" if is_subpage else ""
@@ -57,11 +60,35 @@ def get_navigation(is_subpage=False):
     </nav>
     """
 
+def paginate(items, page, base_filename="index"):
+    """ページネーション処理"""
+    total_pages = (len(items) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+    start = (page - 1) * ITEMS_PER_PAGE
+    end = start + ITEMS_PER_PAGE
+    page_items = items[start:end]
+    
+    prev_link = f'<a href="{base_filename}.html">« 前へ</a>' if page == 2 else (f'<a href="{base_filename}_{page-1}.html">« 前へ</a>' if page > 1 else "")
+    next_link = f'<a href="{base_filename}_{page+1}.html">次へ »</a>' if page < total_pages else ""
+    
+    pagination = f"<div class='pagination'>{prev_link} {next_link}</div>" if total_pages > 1 else ""
+    return page_items, pagination, total_pages
 
+def generate_paginated_list(title, items, base_filename):
+    """ページネーションを適用したリストページを生成"""
+    total_pages = (len(items) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+    for page in range(1, total_pages + 1):
+        paginated_items, pagination, _ = paginate(items, page, base_filename)
+        content = "".join(f'<li><a href="{base_filename}/{item}.html">{item}</a></li>' for item in paginated_items) + pagination
+        
+        file_name = f"{base_filename}_{page}.html" if page > 1 else f"{base_filename}.html"
+        html_content = generate_html(title, f"<h2>{title}</h2><ul>{content}</ul>")
+        
+        with open(f"output/{file_name}", "w", encoding="utf-8") as f:
+            f.write(html_content)
+    print(f"✅ {title} ページを複数ページに分割して生成しました！")
 
 def fetch_notion_data(use_cache=False):
     """Notion API からデータを取得する（キャッシュ対応）"""
-    CACHE_FILE = "data.json"
     if use_cache and os.path.exists(CACHE_FILE):
         print("✅ キャッシュからデータを読み込みます")
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
@@ -141,7 +168,7 @@ def load_notion_data():
         return json.load(f)
 
 def generate_top_page(data):
-    """トップページを生成する"""
+    """トップページをページごとに分割して生成"""
     print("✅ トップページ生成")
     entries_by_date = defaultdict(list)
     
@@ -168,14 +195,21 @@ def generate_top_page(data):
             {topics_html}
         </div>
         """)
+
+    all_entries = ["".join(entries) for date, entries in sorted(entries_by_date.items(), reverse=True)]
+    total_pages = (len(all_entries) + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE
+
+    for page in range(1, total_pages + 1):
+        paginated_entries, pagination, _ = paginate(all_entries, page)
+        content = "".join(paginated_entries) + pagination
+        
+        file_name = f"index_{page}.html" if page > 1 else "index.html"
+        html_content = generate_html("日記ブログ", content)
+        
+        with open(f"output/{file_name}", "w", encoding="utf-8") as f:
+            f.write(html_content)
     
-    daily_entries = "".join("".join(entries) for date, entries in sorted(entries_by_date.items(), reverse=True))
-    
-    html_content = generate_html("日記ブログ", daily_entries)
-    
-    with open("output/index.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print("✅ トップページを生成しました！")
+    print("✅ トップページを複数ページに分割して生成しました！")
 
 def generate_topic_pages(data):
     """トピックページを生成する"""
@@ -268,36 +302,13 @@ def generate_topics_index(data):
         for topic in page["topics"]:
             topics.add(topic["title"])
     
-    topics_list = "".join(f'<li><a href="topics/{topic}.html">{topic}</a></li>' for topic in sorted(topics))
-    content = f"""
-    <h2>トピック一覧</h2>
-    <ul>
-        {topics_list}
-    </ul>
-    """
-    html_content = generate_html("トピック一覧", content)
-    
-    with open("output/topics.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print("✅ トピック一覧ページを生成しました！")
+    generate_paginated_list("トピック一覧", sorted(topics), "topics")
 
 def generate_dates_index(data):
     """日付一覧ページを生成する"""
     print("✅ 日付一覧ページ生成")
     dates = sorted({page["date"] for page in data}, reverse=True)
-    
-    dates_list = "".join(f'<li><a href="dates/{date}.html">{date}</a></li>' for date in sorted(dates, reverse=True))
-    content = f"""
-    <h2>日付一覧</h2>
-    <ul>
-        {dates_list}
-    </ul>
-    """
-    html_content = generate_html("日付一覧", content)
-    
-    with open("output/dates.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
-    print("✅ 日付一覧ページを生成しました！")
+    generate_paginated_list("日付一覧", sorted(dates, reverse=True), "dates")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
