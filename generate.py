@@ -17,6 +17,31 @@ HEADERS = {
     "Notion-Version": "2022-06-28"
 }
 
+def generate_html(title, content, is_subpage=False):
+    """共通HTMLテンプレート"""
+    prefix = "../" if is_subpage else ""
+    return f"""
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <title>{title}</title>
+        <link rel="stylesheet" href="{prefix}style.css">
+        <script defer src="{prefix}script.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    </head>
+    <body>
+        <div class="container">
+            <div class="main-content">
+                <h1><a href="{prefix}index.html">サイトタイトル（未定）</a></h1>
+                {get_navigation(is_subpage)}
+                {content}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
 def get_navigation(is_subpage=False):
     """ページごとの適切なナビゲーションを取得"""
     prefix = "../" if is_subpage else ""
@@ -24,11 +49,14 @@ def get_navigation(is_subpage=False):
     <nav>
         <ul>
             <li><a href="{prefix}index.html">トップページ</a></li>
-            <li><a href="{prefix}topics.html">トピック一覧</a></li>
-            <li><a href="{prefix}dates.html">日付一覧</a></li>
+            <li><a href="{prefix}topics.html" class="button">📌 トピック一覧</a></li>
+            <li><a href="{prefix}dates.html" class="button">📅 日付一覧</a></li>
         </ul>
+        <button id="toggle-theme">🌙</button>
     </nav>
     """
+
+
 
 def fetch_notion_data():
     """Notion API からページ一覧と本文を一括取得し、一時保存する"""
@@ -111,12 +139,13 @@ def generate_top_page(data):
     
     for page in data:
         date = page["date"]
-        date_link = f"<h2><a href='dates/{date}.html'>{date}</a></h2>"
+        date_formatted = f"{date[:4]}年{date[5:7]}月{date[8:10]}日"  # YYYY-MM-DD → YYYY年MM月DD日
+        date_link = f"<h2>{date_formatted} <a href='dates/{date}.html' class='icon-link'>📅</a></h2>"
         topics_html = "".join(f"""
         <div class="topic">
-            <h3><a href="topics/{topic["title"]}.html">{topic["title"]}</a></h3>
+            <h3>{topic["title"]} <a href="topics/{topic["title"]}.html" class='icon-link'>🔍</a></h3>
             <div class="hashtags">
-                <ul>{''.join(f'<li><a href="topics/{tag}.html">{tag}</a></li>' for tag in topic["hashtags"])}
+                <ul>{''.join(f'<li><a href="topics/{tag}.html" class="tag"><i class="fas fa-tags"></i> {tag}</a></li>' for tag in topic["hashtags"])}
                 </ul>
             </div>
             <div class="content">
@@ -134,20 +163,7 @@ def generate_top_page(data):
     
     daily_entries = "".join("".join(entries) for date, entries in sorted(entries_by_date.items(), reverse=True))
     
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <title>日記ブログ</title>
-    </head>
-    <body>
-        <h1>サイトタイトル（未定）</h1>
-        {get_navigation()}
-        {daily_entries}
-    </body>
-    </html>
-    """
+    html_content = generate_html("日記ブログ", daily_entries)
     
     with open("output/index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -174,14 +190,15 @@ def generate_topic_pages(data):
         for date, entry in entries:
             grouped_by_date[date].append(entry)
         
+        date_formatted = f"{date[:4]}年{date[5:7]}月{date[8:10]}日"  # YYYY-MM-DD → YYYY年MM月DD日
         entries_html = "".join(f"""
         <div class="day">
-            <h3><a href="../dates/{date}.html">{date}</a></h3>
+            <h3>{date_formatted} <a href='../dates/{date}.html' class='icon-link'>📅</a></h3>
             {''.join(f"""
             <div class="content-of-day">
-                <h4><a href="../topics/{entry["title"]}.html">{entry["title"]}</a></h4>
+                <h4>{entry["title"]} <a href="../topics/{entry["title"]}.html" class='icon-link'>🔍</a></h4>
                 <div class="hashtags">
-                    <ul>{''.join(f'<li><a href="../topics/{tag}.html">{tag}</a></li>' for tag in entry["hashtags"])}
+                    <ul>{''.join(f'<li><a href="../topics/{tag}.html" class="tag"><i class="fas fa-tags"></i> {tag}</a></li>' for tag in entry["hashtags"])}
                     </ul>
                 </div>
                 <div class="content">
@@ -191,22 +208,14 @@ def generate_topic_pages(data):
             """ for entry in grouped_by_date[date])}
         </div>
         """ for date in sorted(grouped_by_date.keys(), reverse=True))
-        
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="ja">
-        <head>
-            <meta charset="UTF-8">
-            <title>{topic}</title>
-        </head>
-        <body>
-            <h1>サイトタイトル（未定）</h1>
-            {get_navigation(is_subpage=True)}
-            <h2>{topic}</h2>
-            {entries_html}
-        </body>
-        </html>
+
+        content = f"""
+        <h2>{topic}</h2>
+        {entries_html}
         """
+
+        html_content = generate_html(f"トピック: {topic}", content, is_subpage=True)
+        
         with open(f"output/topics/{topic}.html", "w", encoding="utf-8") as f:
             f.write(html_content)
     print("✅ トピックページ（ハッシュタグ含む）を生成しました！")
@@ -218,11 +227,12 @@ def generate_date_pages(data):
     
     for page in data:
         date = page["date"]
+        date_formatted = f"{date[:4]}年{date[5:7]}月{date[8:10]}日"  # YYYY-MM-DD → YYYY年MM月DD日
         entries_html = "".join(f"""
         <div class="topic">
-            <h3><a href="../topics/{topic["title"]}.html">{topic["title"]}</a></h3>
+            <h3>{topic["title"]} <a href="../topics/{topic["title"]}.html" class='icon-link'>🔍</a></h3>
             <div class="hashtags">
-                <ul>{''.join(f'<li><a href="../topics/{tag}.html">{tag}</a></li>' for tag in topic["hashtags"])}
+                <ul>{''.join(f'<li><a href="../topics/{tag}.html" class="tag"><i class="fas fa-tags"></i> {tag}</a></li>' for tag in topic["hashtags"])}
                 </ul>
             </div>
             <div class="content">
@@ -230,23 +240,14 @@ def generate_date_pages(data):
             </div>
         </div>
         """ for topic in page["topics"])
-        
-        html_content = f"""
-        <!DOCTYPE html>
-        <html lang="ja">
-        <head>
-            <meta charset="UTF-8">
-            <title>{date}</title>
-        </head>
-        <body>
-            <h1>サイトタイトル（未定）</h1>
-            {get_navigation(is_subpage=True)}
-            <h2>{date}</h2>
-            {entries_html}
-        </body>
-        </html>
+
+        content = f"""
+        <h2>{date_formatted}</h2>
+        {entries_html}
         """
-        
+
+        html_content = generate_html(f"{date} の日記", content, is_subpage=True)
+
         with open(f"output/dates/{date}.html", "w", encoding="utf-8") as f:
             f.write(html_content)
     print("✅ 日付ページを生成しました！")
