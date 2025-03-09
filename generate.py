@@ -155,6 +155,7 @@ def generate_top_page(data):
 def generate_topic_pages(data):
     """トピックページを生成する"""
     print("✅ トピックページ生成")
+    os.makedirs("output/topics", exist_ok=True)
     topic_dict = defaultdict(list)
     
     for page in data:
@@ -165,9 +166,9 @@ def generate_topic_pages(data):
     for topic, entries in topic_dict.items():
         entries_html = "".join(f"""
         <div class="day">
-            <h3>{date}</h3>
+            <h3><a href="../dates/{date}.html">{date}</a></h3>
             <div class="hashtags">
-                <ul>{''.join(f'<li>{tag}</li>' for tag in entry["hashtags"])}
+                <ul>{''.join(f'<li><a href="{tag}.html">{tag}</a></li>' for tag in entry["hashtags"])}
                 </ul>
             </div>
             <div class="content">
@@ -191,7 +192,6 @@ def generate_topic_pages(data):
         </body>
         </html>
         """
-        os.makedirs("output/topics", exist_ok=True)
         with open(f"output/topics/{topic}.html", "w", encoding="utf-8") as f:
             f.write(html_content)
     print("✅ トピックページを生成しました！")
@@ -205,9 +205,9 @@ def generate_date_pages(data):
         date = page["date"]
         entries_html = "".join(f"""
         <div class="topic">
-            <h3>{topic["title"]}</h3>
+            <h3><a href="../topics/{topic["title"]}.html">{topic["title"]}</a></h3>
             <div class="hashtags">
-                <ul>{''.join(f'<li>{tag}</li>' for tag in topic["hashtags"])}
+                <ul>{''.join(f'<li><a href="../topics/{tag}.html">{tag}</a></li>' for tag in topic["hashtags"])}
                 </ul>
             </div>
             <div class="content">
