@@ -32,3 +32,4 @@ jobs:
             cd ~gorou12/diary_generator
             /home/gorou12/.local/bin/uv sync
             /home/gorou12/.local/bin/uv run generate.py
+            rsync -avz --delete output/ /var/www/html/diary/
