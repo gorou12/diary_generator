@@ -260,24 +260,14 @@ def generate_topics_index(data):
         for topic in page["topics"]:
             topics.add(topic["title"])
     
-    topics_html = "".join(f'<li><a href="topics/{topic}.html">{topic}</a></li>' for topic in sorted(topics))
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <title>トピック一覧</title>
-    </head>
-    <body>
-        <h1>トピック一覧</h1>
-        {get_navigation()}
-        <ul>
-            {topics_html}
-        </ul>
-    </body>
-    </html>
+    topics_list = "".join(f'<li><a href="topics/{topic}.html">{topic}</a></li>' for topic in sorted(topics))
+    content = f"""
+    <h2>トピック一覧</h2>
+    <ul>
+        {topics_list}
+    </ul>
     """
+    html_content = generate_html("トピック一覧", content)
     
     with open("output/topics.html", "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -288,24 +278,14 @@ def generate_dates_index(data):
     print("✅ 日付一覧ページ生成")
     dates = sorted({page["date"] for page in data}, reverse=True)
     
-    dates_html = "".join(f'<li><a href="dates/{date}.html">{date}</a></li>' for date in dates)
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <title>日付一覧</title>
-    </head>
-    <body>
-        <h1>日付一覧</h1>
-        {get_navigation()}
-        <ul>
-            {dates_html}
-        </ul>
-    </body>
-    </html>
+    dates_list = "".join(f'<li><a href="dates/{date}.html">{date}</a></li>' for date in sorted(dates, reverse=True))
+    content = f"""
+    <h2>日付一覧</h2>
+    <ul>
+        {dates_list}
+    </ul>
     """
+    html_content = generate_html("日付一覧", content)
     
     with open("output/dates.html", "w", encoding="utf-8") as f:
         f.write(html_content)
