@@ -157,25 +157,39 @@ def generate_topic_pages(data):
     print("✅ トピックページ生成")
     os.makedirs("output/topics", exist_ok=True)
     topic_dict = defaultdict(list)
+    hashtag_dict = defaultdict(list)
     
     for page in data:
         date = page["date"]
         for topic in page["topics"]:
             topic_dict[topic["title"]].append((date, topic))
+            for hashtag in topic["hashtags"]:
+                hashtag_dict[hashtag].append((date, topic))
     
-    for topic, entries in topic_dict.items():
+    combined_dict = {**topic_dict, **hashtag_dict}  # トピックとハッシュタグを統合
+    
+    for topic, entries in combined_dict.items():
+        grouped_by_date = defaultdict(list)
+        for date, entry in entries:
+            grouped_by_date[date].append(entry)
+        
         entries_html = "".join(f"""
         <div class="day">
             <h3><a href="../dates/{date}.html">{date}</a></h3>
-            <div class="hashtags">
-                <ul>{''.join(f'<li><a href="{tag}.html">{tag}</a></li>' for tag in entry["hashtags"])}
-                </ul>
+            {''.join(f"""
+            <div class="content-of-day">
+                <h4><a href="../topics/{entry["title"]}.html">{entry["title"]}</a></h4>
+                <div class="hashtags">
+                    <ul>{''.join(f'<li><a href="../topics/{tag}.html">{tag}</a></li>' for tag in entry["hashtags"])}
+                    </ul>
+                </div>
+                <div class="content">
+                    {''.join(f'<p>{para}</p>' for para in entry["content"])}
+                </div>
             </div>
-            <div class="content">
-                {''.join(f'<p>{para}</p>' for para in entry["content"])}
-            </div>
+            """ for entry in grouped_by_date[date])}
         </div>
-        """ for date, entry in sorted(entries, reverse=True))
+        """ for date in sorted(grouped_by_date.keys(), reverse=True))
         
         html_content = f"""
         <!DOCTYPE html>
@@ -194,7 +208,7 @@ def generate_topic_pages(data):
         """
         with open(f"output/topics/{topic}.html", "w", encoding="utf-8") as f:
             f.write(html_content)
-    print("✅ トピックページを生成しました！")
+    print("✅ トピックページ（ハッシュタグ含む）を生成しました！")
 
 def generate_date_pages(data):
     """日付ページを生成する"""
