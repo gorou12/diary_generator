@@ -181,8 +181,48 @@ def generate_topic_pages(data):
             f.write(html_content)
     print("✅ トピックページを生成しました！")
 
+def generate_date_pages(data):
+    """日付ページを生成する"""
+    print("✅ 日付ページ生成")
+    os.makedirs("output/dates", exist_ok=True)
+    
+    for page in data:
+        date = page["date"]
+        entries_html = "".join(f"""
+        <div class="topic">
+            <h3>{topic["title"]}</h3>
+            <div class="hashtags">
+                <ul>{''.join(f'<li>{tag}</li>' for tag in topic["hashtags"])}
+                </ul>
+            </div>
+            <div class="content">
+                {''.join(f'<p>{para}</p>' for para in topic["content"])}
+            </div>
+        </div>
+        """ for topic in page["topics"])
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+            <meta charset="UTF-8">
+            <title>{date}</title>
+        </head>
+        <body>
+            <h1>サイトタイトル（未定）</h1>
+            <h2>{date}</h2>
+            {entries_html}
+        </body>
+        </html>
+        """
+        
+        with open(f"output/dates/{date}.html", "w", encoding="utf-8") as f:
+            f.write(html_content)
+    print("✅ 日付ページを生成しました！")
+
 if __name__ == "__main__":
     data = fetch_notion_data()
     if data:
         generate_top_page(data)
         generate_topic_pages(data)
+        generate_date_pages(data)
