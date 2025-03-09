@@ -36,6 +36,7 @@ def fetch_notion_data():
     response = requests.post(url, headers=HEADERS)
     
     if response.status_code == 200:
+        print("✅ Notion DBデータ取得完了")
         data = response.json()
         
         all_pages = []
@@ -49,6 +50,7 @@ def fetch_notion_data():
                 continue  # 非公開ページはスキップ
             
             topics = fetch_page_content(page_id)
+            print(f"- 日付データ({date}) 取得完了")
             all_pages.append({
                 "date": date,
                 "topics": topics
@@ -109,29 +111,28 @@ def generate_top_page(data):
     
     for page in data:
         date = page["date"]
-        for topic in page["topics"]:
-            hashtags_html = "".join(f"<li>{tag}</li>" for tag in topic["hashtags"])
-            content_html = "".join(f"<p>{para}</p>" for para in topic["content"])
-            entry_html = f"""
-            <div class="topic">
-                <h3>{topic["title"]}</h3>
-                <div class="hashtags">
-                    <ul>{hashtags_html}</ul>
-                </div>
-                <div class="content">
-                    {content_html}
-                </div>
+        date_link = f"<h2><a href='dates/{date}.html'>{date}</a></h2>"
+        topics_html = "".join(f"""
+        <div class="topic">
+            <h3><a href="topics/{topic["title"]}.html">{topic["title"]}</a></h3>
+            <div class="hashtags">
+                <ul>{''.join(f'<li><a href="topics/{tag}.html">{tag}</a></li>' for tag in topic["hashtags"])}
+                </ul>
             </div>
-            """
-            entries_by_date[date].append(entry_html)
+            <div class="content">
+                {''.join(f'<p>{para}</p>' for para in topic["content"])}
+            </div>
+        </div>
+        """ for topic in page["topics"])
+        
+        entries_by_date[date].append(f"""
+        <div class="daily">
+            {date_link}
+            {topics_html}
+        </div>
+        """)
     
-    # HTML 全体を作成
-    daily_entries = "".join(f"""
-    <div class="daily">
-        <h2>{date}</h2>
-        {''.join(entries)}
-    </div>
-    """ for date, entries in sorted(entries_by_date.items(), reverse=True))
+    daily_entries = "".join("".join(entries) for date, entries in sorted(entries_by_date.items(), reverse=True))
     
     html_content = f"""
     <!DOCTYPE html>
@@ -150,7 +151,7 @@ def generate_top_page(data):
     
     with open("output/index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
-    print("✅ index.html を生成しました！")
+    print("✅ トップページを生成しました！")
 
 def generate_topic_pages(data):
     """トピックページを生成する"""
