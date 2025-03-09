@@ -18,16 +18,33 @@ HEADERS = {
 }
 
 def fetch_notion_data():
-    """Notion API からデータを取得し、一時保存する"""
+    """Notion API からページ一覧と本文を一括取得し、一時保存する"""
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
     response = requests.post(url, headers=HEADERS)
     
     if response.status_code == 200:
         data = response.json()
+        
+        all_pages = []
+        for item in data.get("results", []):
+            properties = item.get("properties", {})
+            date = properties.get("日付", {}).get("date", {}).get("start", "")
+            page_id = item.get("id", "")
+            is_public = properties.get("公開", {}).get("checkbox", False)
+            
+            if not date or not is_public:
+                continue  # 非公開ページはスキップ
+            
+            topics = fetch_page_content(page_id)
+            all_pages.append({
+                "date": date,
+                "topics": topics
+            })
+        
         with open("data.json", "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        print("✅ Notionデータ取得完了")
-        return data
+            json.dump(all_pages, f, ensure_ascii=False, indent=4)
+        print("✅ Notionデータ取得＆キャッシュ完了")
+        return all_pages
     else:
         print(f"⚠️ APIエラー: {response.status_code}")
         print(response.text)
@@ -67,24 +84,19 @@ def fetch_page_content(page_id):
         print(f"⚠️ ページコンテンツ取得エラー: {response.status_code}")
         return []
 
+def load_notion_data():
+    """保存された Notion データを読み込む"""
+    with open("data.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+
 def generate_top_page(data):
     """トップページを生成する"""
     print("✅ トップページ生成")
     entries_by_date = defaultdict(list)
     
-    for item in data.get("results", []):
-        properties = item.get("properties", {})
-        date = properties.get("日付", {}).get("date", {}).get("start", "")
-        page_id = item.get("id", "")
-        is_public = properties.get("公開", {}).get("checkbox", False)
-        
-        if not date or not is_public:
-            continue  # 日付がない、または非公開ページの場合はスキップ
-        
-        # Notion ページの本文を取得し、トピック単位で整理
-        topics = fetch_page_content(page_id)
-        
-        for topic in topics:
+    for page in data:
+        date = page["date"]
+        for topic in page["topics"]:
             hashtags_html = "".join(f"<li>{tag}</li>" for tag in topic["hashtags"])
             content_html = "".join(f"<p>{para}</p>" for para in topic["content"])
             entry_html = f"""
