@@ -138,7 +138,51 @@ def generate_top_page(data):
         f.write(html_content)
     print("✅ index.html を生成しました！")
 
+def generate_topic_pages(data):
+    """トピックページを生成する"""
+    print("✅ トピックページ生成")
+    topic_dict = defaultdict(list)
+    
+    for page in data:
+        date = page["date"]
+        for topic in page["topics"]:
+            topic_dict[topic["title"]].append((date, topic))
+    
+    for topic, entries in topic_dict.items():
+        entries_html = "".join(f"""
+        <div class="day">
+            <h3>{date}</h3>
+            <div class="hashtags">
+                <ul>{''.join(f'<li>{tag}</li>' for tag in entry["hashtags"])}
+                </ul>
+            </div>
+            <div class="content">
+                {''.join(f'<p>{para}</p>' for para in entry["content"])}
+            </div>
+        </div>
+        """ for date, entry in sorted(entries, reverse=True))
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+            <meta charset="UTF-8">
+            <title>{topic}</title>
+        </head>
+        <body>
+            <h1>サイトタイトル（未定）</h1>
+            <h2>{topic}</h2>
+            {entries_html}
+        </body>
+        </html>
+        """
+        os.makedirs("output/topics", exist_ok=True)
+        with open(f"output/topics/{topic}.html", "w", encoding="utf-8") as f:
+            f.write(html_content)
+    print("✅ トピックページを生成しました！")
+
 if __name__ == "__main__":
     data = fetch_notion_data()
     if data:
         generate_top_page(data)
+        generate_topic_pages(data)
