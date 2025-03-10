@@ -9,10 +9,6 @@ import get_diary_contents
 # .env ファイルを読み込む
 load_dotenv()
 
-CACHE_FILE = "data.json"  # Notionデータの仮置き場所
-ITEMS_PER_PAGE = 10  # 1ページに表示する最大数
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--use-cache", action="store_true", help="キャッシュを使用する")

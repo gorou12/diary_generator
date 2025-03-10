@@ -1,3 +1,4 @@
+import configparser
 import json
 import os
 import re
@@ -13,7 +14,13 @@ HEADERS = {
     "Notion-Version": "2022-06-28",
 }
 
-CACHE_FILE = "data.json"  # Notionデータの仮置き場所
+config = configparser.ConfigParser()
+config.read("config/settings.ini")
+
+CACHE_FILE = config.get("settings", "CacheFileName")
+
+if not CACHE_FILE:
+    raise Exception("settings.iniから値を読めませんでした")
 
 
 def fetch_notion_data(use_cache=False):

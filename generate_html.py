@@ -1,7 +1,11 @@
+import configparser
 import os
 from collections import Counter, defaultdict
 
 from jinja2 import Environment, FileSystemLoader
+
+config = configparser.ConfigParser()
+config.read("config/page.ini")
 
 # Jinja2テンプレートの読み込み
 env = Environment(loader=FileSystemLoader("templates"))
@@ -20,7 +24,9 @@ def render_template(template_name, context, output_path):
 def generate_top_page(data):
     """Jinja2でページネーション付きのトップページを生成"""
     print("✅ トップページ生成")
-    pages, total_pages = paginate_list(data, items_per_page=20)
+    pages, total_pages = paginate_list(
+        data, config.getint("indexpage", "paginate", fallback=20)
+    )
 
     for idx, page_items in enumerate(pages):
         page_num = idx + 1
@@ -136,7 +142,9 @@ def generate_topics_index(data):
         tpl for tpl in sorted_topics if tpl[1] >= 2
     ]  # Counterが2以上のものだけ
 
-    pages, total_pages = paginate_list(sorted_topics, items_per_page=20)
+    pages, total_pages = paginate_list(
+        sorted_topics, config.getint("topiclist", "paginate", fallback=20)
+    )
 
     for idx, page_items in enumerate(pages):
         page_num = idx + 1
@@ -173,7 +181,9 @@ def generate_dates_index(data):
     print("✅ 日付一覧ページ生成")
     dates = sorted({page["date"] for page in data}, reverse=True)
 
-    pages, total_pages = paginate_list(dates, items_per_page=20)
+    pages, total_pages = paginate_list(
+        dates, config.getint("datelist", "paginate", fallback=20)
+    )
 
     for idx, page_items in enumerate(pages):
         page_num = idx + 1
