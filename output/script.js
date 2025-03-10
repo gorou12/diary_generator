@@ -18,3 +18,18 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 });
+
+function filterList() {
+    const input = document.getElementById('searchBox');
+    const filter = input.value.toLowerCase();
+    const lists = document.querySelectorAll('ul li');
+
+    lists.forEach(function (item) {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(filter)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}

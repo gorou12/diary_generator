@@ -21,26 +21,31 @@ HEADERS = {
 CACHE_FILE = "data.json" # Notionデータの仮置き場所
 ITEMS_PER_PAGE = 10 # 1ページに表示する最大数
 
-def generate_html(title, content, is_subpage=False):
-    """共通HTMLテンプレート"""
-    prefix = "../" if is_subpage else ""
+def generate_html(title, content, sidebar_content="", is_subpage=False):
+    """共通HTMLテンプレート（サイドバー対応）"""
     return f"""
     <!DOCTYPE html>
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
         <title>{title}</title>
-        <link rel="stylesheet" href="{prefix}style.css">
-        <script defer src="{prefix}script.js"></script>
+        <link rel="stylesheet" href="style.css">
+        <script defer src="script.js"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     </head>
     <body>
         <div class="container">
-            <div class="main-content">
-                <h1><a href="{prefix}index.html">サイトタイトル（未定）</a></h1>
+            <main class="main-content">
+                <h1><a href="index.html">サイトタイトル（未定）</a></h1>
                 {get_navigation(is_subpage)}
                 {content}
-            </div>
+            </main>
+            <aside class="sidebar">
+                <h2>検索</h2>
+                <input type="text" id="searchBox" placeholder="検索..." onkeyup="filterList()">
+                <h2>人気のトピック</h2>
+                {sidebar_content}
+            </aside>
         </div>
     </body>
     </html>
@@ -256,7 +261,7 @@ def generate_topic_pages(data):
         {entries_html}
         """
 
-        html_content = generate_html(f"トピック: {topic}", content, is_subpage=True)
+        html_content = generate_html(f"トピック: {topic}", content, "", is_subpage=True)
         
         with open(f"output/topics/{topic}.html", "w", encoding="utf-8") as f:
             f.write(html_content)
@@ -288,7 +293,7 @@ def generate_date_pages(data):
         {entries_html}
         """
 
-        html_content = generate_html(f"{date} の日記", content, is_subpage=True)
+        html_content = generate_html(f"{date} の日記", content, "", is_subpage=True)
 
         with open(f"output/dates/{date}.html", "w", encoding="utf-8") as f:
             f.write(html_content)
