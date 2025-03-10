@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 from dotenv import load_dotenv
 
@@ -23,4 +24,4 @@ if __name__ == "__main__":
         generate_html.generate_topics_index(data)
         generate_html.generate_dates_index(data)
         generate_search_json.generate_search_data(data)
-    raise Exception("データ取得に失敗しました！")
+    sys.exit("データ取得失敗")
