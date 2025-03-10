@@ -1,5 +1,5 @@
 import json
-import os
+
 
 def generate_search_data(data):
     """全文検索用の search_data.json を生成する"""
@@ -14,15 +14,14 @@ def generate_search_data(data):
         for topic in page["topics"]:
             title = topic["title"]
             content_text = " ".join(topic["content"])  # 段落を結合して1つの文字列に
-            hashtags = " ".join(f"#{tag}" for tag in topic["hashtags"])  # ハッシュタグも含める
+            hashtags = " ".join(
+                f"#{tag}" for tag in topic["hashtags"]
+            )  # ハッシュタグも含める
             full_content = f"{content_text} {hashtags}"  # 本文 + タグ
 
-            search_items.append({
-                "date": date,
-                "title": title,
-                "content": full_content,
-                "url": url
-            })
+            search_items.append(
+                {"date": date, "title": title, "content": full_content, "url": url}
+            )
 
     # JSONファイルとして保存
     with open("output/search_data.json", "w", encoding="utf-8") as f:
