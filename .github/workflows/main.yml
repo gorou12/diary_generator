@@ -30,6 +30,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
             cd ~gorou12/diary_generator
             /home/gorou12/.local/bin/uv sync
             /home/gorou12/.local/bin/uv run generate.py
