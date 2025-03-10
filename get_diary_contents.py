@@ -2,6 +2,7 @@ import configparser
 import json
 import os
 import re
+import sys
 
 import requests
 from dotenv import load_dotenv
@@ -61,9 +62,9 @@ def fetch_notion_data(use_cache=False):
         print("✅ Notionデータ取得＆キャッシュ完了")
         return all_pages
     else:
-        print(f"⚠️ APIエラー: {response.status_code}")
-        print(response.text)
-        return None
+        print(f"⚠️ APIエラー: {response.status_code}", file=sys.stderr)
+        print(response.text, file=sys.stderr)
+        sys.exit(1)
 
 
 def fetch_page_content(page_id):
@@ -101,8 +102,8 @@ def fetch_page_content(page_id):
 
         return topics
     else:
-        print(f"⚠️ ページコンテンツ取得エラー: {response.status_code}")
-        return []
+        print(f"⚠️ ページコンテンツ取得エラー: {response.status_code}", file=sys.stderr)
+        sys.exit(1)
 
 
 def load_notion_data():

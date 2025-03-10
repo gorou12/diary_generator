@@ -1,5 +1,4 @@
 import argparse
-import sys
 
 import generate_html
 import generate_search_json
@@ -19,4 +18,3 @@ if __name__ == "__main__":
         generate_html.generate_topics_index(data)
         generate_html.generate_dates_index(data)
         generate_search_json.generate_search_data(data)
-    sys.exit("データ取得失敗")
