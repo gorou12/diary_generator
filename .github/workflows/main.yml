@@ -19,9 +19,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~gorou12/diary_generator
-            git reset --hard
+            find . -name "*.pyc" -exec rm -f {} +
+            find . -name "__pycache__" -exec rm -rf {} +
             git pull origin main
-            # ./deploy.sh  # 必要ならデプロイスクリプトを実行
       
       - name: Generate HTML
         uses: appleboy/ssh-action@master
