@@ -1,8 +1,14 @@
+# python
+__pycache__/
+*.pyc
+
+# system resources
+.env
 generate
 *.html
 !templates/*.html
 *.json
 
-.env
+# uv
 .venv
 .python-version
