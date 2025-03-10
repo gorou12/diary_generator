@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/src/style.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script defer src="/src/script.js"></script>
+</head>
+<body>
+    <div class="container">
+        <main class="main-content">
+            <h1><a href="/index.html">サイトタイトル（未定）</a></h1>
+            {% include "navigation.html" %}
+            {% block content %}{% endblock %}
+        </main>
+        <aside class="sidebar">
+            <h2>検索</h2>
+            <input type="text" id="searchBox" placeholder="本文検索..." onkeyup="fullTextSearch()">
+            <div id="searchResults"></div>
+            <h2>人気のトピック</h2>
+            {{ sidebar_content | safe }}
+        </aside>
+    </div>
+</body>
+</html>

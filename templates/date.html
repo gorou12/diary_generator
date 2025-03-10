@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{{ date }}</h2>
+
+{% for topic in topics %}
+<div class="topic">
+    <h3>{{ topic.title }} <a href="/topics/{{ topic.title }}.html" class="icon-link">🔍</a> </h3>
+    <div class="hashtags">
+        <ul>
+            {% for tag in topic.hashtags %}
+            <li><a href="/topics/{{ tag }}.html" class="tag"><i class="fas fa-tags"></i> #{{ tag }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="content">
+        {% for para in topic.content %}
+        <p>{{ para }}</p>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{{ topic_name }}</h2>
+
+{% for date_entry in entries %}
+<div class="day">
+    <h3>{{ date_entry.date }} <a href="/dates/{{ date_entry.date_raw }}.html" class="icon-link">📅</a></h3>
+    
+    {% for entry in date_entry.entries %}
+    <div class="content-of-day">
+        <h4>{{ entry.title }} <a href="/topics/{{ entry.title }}.html" class="icon-link">🔍</a></h4>
+        <div class="hashtags">
+            <ul>
+                {% for tag in entry.hashtags %}
+                <li><a href="/topics/{{ tag }}.html" class="tag"><i class="fas fa-tags"></i> {{ tag }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="content">
+            {% for para in entry.content %}
+            <p>{{ para }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

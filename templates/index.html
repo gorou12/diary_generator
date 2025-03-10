@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>最新の日記</h2>
+{% for entry in entries %}
+<div class="daily">
+    <h3>{{ entry.date }} <a href="/dates/{{ entry.date }}.html" class="icon-link">📅</a></h3>
+    {% for topic in entry.topics %}
+    <div class="topic">
+        <h4>{{ topic.title }} <a href="/topics/{{ topic.title }}.html" class="icon-link">🔍</a></h4>
+        <div class="hashtags">
+            <ul>
+                {% for tag in topic.hashtags %}
+                <li><a href="/topics/{{ tag }}.html">#{{ tag }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="content">
+            {% for para in topic.content %}
+            <p>{{ para }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+
+{% if pagination %}
+<div class="pagination">
+    {{ pagination | safe }}
+</div>
+{% endif %}
+{% endblock %}

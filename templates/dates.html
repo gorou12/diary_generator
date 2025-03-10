@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>日付一覧</h2>
+<ul>
+{% for date in dates %}
+    <li><a href="/dates/{{ date }}.html">{{ date }}</a></li>
+{% endfor %}
+</ul>
+
+{% if pagination %}
+<div class="pagination">
+    {{ pagination | safe }}
+</div>
+{% endif %}
+{% endblock %}
