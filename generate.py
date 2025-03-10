@@ -1,14 +1,9 @@
 import argparse
 import sys
 
-from dotenv import load_dotenv
-
 import generate_html
 import generate_search_json
 import get_diary_contents
-
-# .env ファイルを読み込む
-load_dotenv()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -4,8 +4,12 @@ import os
 import re
 
 import requests
+from dotenv import load_dotenv
 
 # Notion API 設定
+# .env ファイルを読み込む
+load_dotenv()
+
 NOTION_API_KEY = os.getenv("NOTION_API_KEY")
 DATABASE_ID = os.getenv("DATABASE_ID")
 HEADERS = {
