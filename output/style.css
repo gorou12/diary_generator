@@ -83,6 +83,34 @@ nav ul li a.button {
     outline: none;
 }
 
+/* 検索結果エリア */
+.search-results {
+    margin-top: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* 検索結果のアイテム */
+.search-result-item {
+    margin-bottom: 10px;
+}
+
+.search-result-item a {
+    font-weight: bold;
+    text-decoration: none;
+    color: #007acc;
+}
+
+.search-result-item p {
+    margin: 5px 0 0;
+    font-size: 14px;
+    color: #555;
+}
+
 .icon-link {
     margin-left: 8px;
     text-decoration: none;

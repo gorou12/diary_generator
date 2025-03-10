@@ -1,3 +1,4 @@
+import generate_search_json
 import requests
 import json
 import os
@@ -42,7 +43,9 @@ def generate_html(title, content, sidebar_content="", is_subpage=False):
             </main>
             <aside class="sidebar">
                 <h2>検索</h2>
-                <input type="text" id="searchBox" placeholder="検索..." onkeyup="filterList()">
+                <!--<input type="text" id="searchBox" placeholder="検索..." onkeyup="filterList()">-->
+                <input type="text" id="searchBox" placeholder="本文検索..." onkeyup="fullTextSearch()">
+                <div id="searchResults" class="search-results"></div>
                 <h2>人気のトピック</h2>
                 {sidebar_content}
             </aside>
@@ -339,3 +342,4 @@ if __name__ == "__main__":
         generate_date_pages(data)
         generate_topics_index(data)
         generate_dates_index(data)
+        generate_search_json.generate_search_data(data)
