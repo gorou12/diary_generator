@@ -8,19 +8,17 @@ from ...models import Config, DiaryEntry
 def generate(diary_entries: list[DiaryEntry], config: Config):
     os.makedirs("output/topics", exist_ok=True)
 
-    topic_dict = defaultdict(list)
-    hashtag_dict = defaultdict(list)
+    combined_dict = defaultdict(list)
 
     # トピック・ハッシュタグの収集
     for diary_entry in diary_entries:
         date = diary_entry.date
         for topic in diary_entry.topics:
-            topic_dict[topic.title].append((date, topic))
+            combined_dict[topic.title].append((date, topic))
             for hashtag in topic.hashtags:
-                hashtag_dict[hashtag].append((date, topic))
-
-    # トピック＋ハッシュタグ統合
-    combined_dict = {**topic_dict, **hashtag_dict}
+                # トピック名とタグが同じものがついているもの以外を追加
+                if (date, topic) not in combined_dict[hashtag]:
+                    combined_dict[hashtag].append((date, topic))
 
     # 各トピックごとに生成
     for topic, entries in combined_dict.items():
