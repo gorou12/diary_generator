@@ -9,6 +9,8 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
     for diary_entry in diary_entries:
         for topic in diary_entry.topics:
             topic_counter[topic.title] += 1
+            for hashtag in topic.hashtags:
+                topic_counter[hashtag] += 1
 
     sorted_topics = topic_counter.most_common()
     popular_topics = [
