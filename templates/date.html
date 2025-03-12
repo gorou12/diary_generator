@@ -21,4 +21,14 @@
 </div>
 {% endfor %}
 
+<div class="navigation-day">
+    {% if next_date %}
+    <a href="{{ newest_date }}.html">«« 最新日</a><br>
+    <a href="{{ next_date }}.html">« 次の日</a>
+    {% endif %}
+    {% if prev_date %}
+    <a href="{{ prev_date }}.html">前の日 »</a>
+    {% endif %}
+</div>
+
 {% endblock %}
