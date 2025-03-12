@@ -5,8 +5,7 @@ __pycache__/
 # system resources
 .env
 generate
-*.html
-!templates/*.html
+output/
 *.json
 
 # uv

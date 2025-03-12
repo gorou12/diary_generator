@@ -1,4 +1,4 @@
-from . import contents, html, json
+from . import contents, copystatics, html, json
 from .models import Config
 
 
@@ -13,3 +13,5 @@ def generate_all(config: Config):
     html.topics.detail.generate(diary_entries, config)
 
     json.search.generate(diary_entries, config)
+
+    copystatics.copy_static_files()
