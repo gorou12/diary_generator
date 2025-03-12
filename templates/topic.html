@@ -4,7 +4,7 @@
 <h2>{{ topic_name }}</h2>
 
 {% for date_entry in entries %}
-<div class="day">
+<div class="daily">
     <h3>{{ date_entry.date }} <a href="/dates/{{ date_entry.date_raw }}.html" class="icon-link">📅</a></h3>
     
     {% for entry in date_entry.entries %}
@@ -26,4 +26,5 @@
     {% endfor %}
 </div>
 {% endfor %}
+
 {% endblock %}

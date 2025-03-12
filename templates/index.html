@@ -2,6 +2,7 @@
 
 {% block content %}
 <h2>最新の日記</h2>
+
 {% for entry in entries %}
 <div class="daily">
     <h3>{{ entry.date }} <a href="/dates/{{ entry.date }}.html" class="icon-link">📅</a></h3>

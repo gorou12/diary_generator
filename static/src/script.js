@@ -2,20 +2,28 @@ document.addEventListener("DOMContentLoaded", function() {
     const toggleButton = document.getElementById("toggle-theme");
     const currentTheme = localStorage.getItem("theme");
     
-    if (currentTheme === "dark") {
-        document.body.classList.add("dark-mode");
+    
+    if (currentTheme === 'dark') {
+        document.documentElement.classList.add("dark");
         toggleButton.textContent = "☀️";
     }
 
     toggleButton.addEventListener("click", function() {
-        document.body.classList.toggle("dark-mode");
-        if (document.body.classList.contains("dark-mode")) {
-            localStorage.setItem("theme", "dark");
-            toggleButton.textContent = "☀️";
-        } else {
+        const currentTheme = localStorage.getItem("theme");
+        const html = document.documentElement;
+        const isDark = currentTheme === 'dark'
+        // html.classList.add("transition-on");
+        if (isDark) {
+            html.classList.remove("dark");
             localStorage.setItem("theme", "light");
             toggleButton.textContent = "🌙";
+        } else {
+            html.classList.add("dark");
+            localStorage.setItem("theme", "dark");
+            toggleButton.textContent = "☀️";
         }
+
+        // setTimeout(() => html.classList.remove('transition-on'), 1000);
     });
 });
 
@@ -39,7 +47,7 @@ function filterList() {
 let searchData = [];
 
 // 初回読み込み時にデータを取得
-fetch('search_data.json')
+fetch(new URL('/search_data.json', window.location))
     .then(response => response.json())
     .then(data => {
         searchData = data;

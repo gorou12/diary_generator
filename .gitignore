@@ -5,7 +5,7 @@ __pycache__/
 # system resources
 .env
 generate
-output/
+output
 *.json
 
 # uv

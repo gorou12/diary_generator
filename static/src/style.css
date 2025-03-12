@@ -1,179 +1,327 @@
+/* === 基本設定 === */
 body {
-    font-family: 'Arial', sans-serif;
-    line-height: 1.6;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+    color: #333;
+    background-color: #fff;
     margin: 0;
     padding: 0;
-    background-color: #f9f9f9;
-    color: #333;
+    /* transition: none; */
 }
 
+/* === レイアウト（PC時） === */
 .container {
     display: flex;
-    max-width: 1000px;
+    justify-content: center;
+    max-width: 960px;
     margin: 0 auto;
+    padding: 20px;
+    gap: 30px;
 }
 
 .main-content {
-    width: 70%;
-    padding: 20px;
+    width: 600px;
 }
 
-h1, h2, h3, h4 {
-    color: #222;
+.sidebar {
+    width: 280px;
+    padding-left: 20px;
+    border-left: 1px solid #eee;
 }
 
-h1 a {
-    text-decoration: none;
-    color: inherit;
-}
-
-nav {
-    background: #007acc;
-    padding: 10px;
+/* === タイトルや見出し === */
+h1 {
+    font-size: 24px;
+    margin: 30px 0;
     text-align: center;
 }
 
-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+h2 {
+    font-size: 22px;
+    margin: 40px 0 20px;
 }
 
-nav ul li {
-    display: inline;
-    margin: 0 10px;
+h3 {
+    font-size: 20px;
+    margin: 30px 0 10px;
 }
 
-nav ul li a.button {
-    background: #005f99;
-    color: white;
-    padding: 8px 12px;
-    border-radius: 5px;
-    text-decoration: none;
-}
-
-/* サイドバー */
-.sidebar {
-    width: 30%;
-    background: #f4f4f4;
-    padding: 20px;
-    border-left: 2px solid #ddd;
-}
-
-/* サイドバーの見出し */
-.sidebar h2 {
+h4 {
     font-size: 18px;
-    margin-bottom: 10px;
+    margin: 20px 0 5px;
+}
+
+/* === トピック・日付・本文 === */
+.daily {
+    padding: 20px;
+    margin-bottom: 40px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.topic, .content-of-day {
+    padding: 15px;
+    margin-bottom: 30px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.content p {
+    margin: 10px 0;
+}
+
+/* === ハッシュタグ === */
+.hashtags ul {
+    padding: 0;
+    margin: 5px 0 15px;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hashtags li a {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #f0f0f0;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.hashtags li a:hover {
+    background: #e0e0e0;
+}
+
+/* === アイコンリンク === */
+.icon-link {
+    margin-left: 5px;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+/* === 前へ・次へナビ === */
+.navigation-day {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 40px 0;
+}
+
+.navigation-day a {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #007acc;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    /* transition: background 0.2s; */
+    min-width: 100px;
+    text-align: center;
+}
+
+.navigation-day a:hover {
+    background: #005fa3;
+}
+
+.navigation-day .empty {
+    display: inline-block;
+    min-width: 100px;
+    height: 36px;
+}
+
+/* === ページネーション === */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 40px 0;
+}
+
+.pagination a {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #ddd;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    /* transition: background 0.2s; */
+    min-width: 70px;
+    text-align: center;
+}
+
+.pagination a:hover {
+    background: #bbb;
+}
+
+.pagination .empty {
+    display: inline-block;
+    min-width: 70px;
+    height: 36px;
+}
+
+/* === サイドバー === */
+.sidebar h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
     border-bottom: 1px solid #ddd;
     padding-bottom: 5px;
 }
 
-/* 検索ボックス */
-#searchBox {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
+.sidebar ul {
+    padding: 0;
+    margin: 0 0 20px;
+    list-style: none;
 }
 
-/* 検索ボックスのフォーカス時 */
-#searchBox:focus {
-    border-color: #007acc;
-    outline: none;
-}
-
-/* 検索結果エリア */
-.search-results {
-    margin-top: 10px;
-    max-height: 400px;
-    overflow-y: auto;
-    background: #fff;
-    border: 1px solid #ddd;
-    padding: 10px;
-    border-radius: 4px;
-}
-
-/* 検索結果のアイテム */
-.search-result-item {
+.sidebar li {
     margin-bottom: 10px;
 }
 
-.search-result-item a {
-    font-weight: bold;
-    text-decoration: none;
+.sidebar a {
     color: #007acc;
-}
-
-.search-result-item p {
-    margin: 5px 0 0;
-    font-size: 14px;
-    color: #555;
-}
-
-.icon-link {
-    margin-left: 8px;
     text-decoration: none;
-    color: #007acc;
-    font-size: 16px;
 }
 
-.hashtags ul {
-    list-style: none;
-    padding: 0;
+.sidebar a:hover {
+    text-decoration: underline;
+}
+
+/* === ナビゲーションバー === */
+nav {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    justify-content: center;
     align-items: center;
-    margin-top: 5px;
-}
-
-.hashtags li {
-    display: inline;
-    margin: 0;
-}
-
-.tag {
-    display: inline-block;
-    background: #eee;
-    color: #555;
-    padding: 5px 10px;
-    border-radius: 4px;
-    text-decoration: none;
-    margin: 2px;
-    font-size: 14px;
-}
-
-.daily {
-    border-bottom: 2px solid #ddd;
-    padding-bottom: 20px;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f8f8;
+    border-bottom: 1px solid #ddd;
     margin-bottom: 20px;
 }
 
-/* ダークモード対応 */
-.dark-mode {
-    background-color: #222;
+nav ul {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 10px;
+}
+
+nav li a, nav button {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #007acc;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    /* transition: background 0.2s; */
+    border: none;
+    font-size: 14px;
+}
+
+nav li a:hover, nav button:hover {
+    background: #005fa3;
+}
+
+/* === 明暗反転ボタン ===
+html.transition-on, body.transition-on {
+    transition: background-color 0.3s, color 0.3s;
+} */
+
+/* === ダークモード対応 === */
+html.dark, html.dark body {
+    background-color: #1e1e1e;
     color: #ddd;
 }
 
-.dark-mode nav {
+html.dark .daily {
+    border: 1px solid #444;
+    background: #2a2a2a;
+}
+
+html.dark .topic, html.dark .content-of-day {
+    border: 1px solid #555;
+    background: #1e1e1e;
+}
+
+html.dark .sidebar {
+    border-left: 1px solid #444;
+}
+
+html.dark a {
+    color: #77aaff;
+}
+
+html.dark .hashtags li a {
+    background: #333;
+    color: #ddd;
+}
+
+html.dark .hashtags li a:hover {
     background: #444;
 }
 
-.dark-mode .tag {
-    background: #555;
-    color: #fff;
+html.dark .navigation-day a, 
+html.dark .pagination a {
+    background: #444;
+    color: #ddd;
 }
 
-.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4 {
-    color: #fff;
+html.dark .navigation-day a:hover,
+html.dark .pagination a:hover {
+    background: #666;
 }
 
-#toggle-theme {
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    color: white;
-    margin-left: 10px;
+html.dark nav {
+    background: #2a2a2a;
+    border-bottom: 1px solid #444;
 }
+
+html.dark nav li a, html.dark nav button {
+    background: #444;
+    color: #ddd;
+}
+
+html.dark nav li a:hover, html.dark nav button:hover {
+    background: #666;
+}
+
+/* === レスポンシブ対応（スマホ） === */
+@media (max-width: 800px) {
+    .container {
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .main-content, .sidebar, html.dark .sidebar {
+        width: 100%;
+        padding: 0;
+        border: none;
+        margin-top: 30px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    h2 {
+        font-size: 20px;
+    }
+
+    h3 {
+        font-size: 18px;
+    }
+
+    h4 {
+        font-size: 16px;
+    }
+
+    .navigation-day a, .pagination a {
+        padding: 6px 10px;
+    }
+}
+

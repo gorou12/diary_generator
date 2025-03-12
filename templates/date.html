@@ -23,11 +23,17 @@
 
 <div class="navigation-day">
     {% if next_date %}
-    <a href="{{ newest_date }}.html">«« 最新日</a><br>
+    <a href="{{ newest_date }}.html">«« 最新日</a>
     <a href="{{ next_date }}.html">« 次の日</a>
+    {% else %}
+    <span class="empty"></span>
+    <span class="empty"></span>
     {% endif %}
+    <span class="empty"></span>
     {% if prev_date %}
     <a href="{{ prev_date }}.html">前の日 »</a>
+    {% else %}
+    <span class="empty"></span>
     {% endif %}
 </div>
 
