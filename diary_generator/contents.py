@@ -4,6 +4,7 @@ import re
 
 from . import notion_api, utils
 from .models import Config, DiaryEntry, Topic
+from .util.linkcard import linkcard, ogp_cache
 
 
 def get(config: Config) -> list[DiaryEntry]:
@@ -31,17 +32,25 @@ def _write_content_json(json_path: str, content: any):
 
 def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
     entries = []
+
+    # OGP用キャッシュ読み込み
+    cache = ogp_cache.load_cache()
+
     for entry_data in raw_data:
         topics = [
             Topic(
                 title=topic_data["title"],
                 content=topic_data["content"],
+                content_html=linkcard.create(topic_data["content"], cache),
                 hashtags=topic_data["hashtags"],
             )
             for topic_data in entry_data["topics"]
         ]
         entry = DiaryEntry(date=entry_data["date"], topics=topics)
         entries.append(entry)
+
+    # OGP用キャッシュ再書き込み
+    ogp_cache.save_cache(cache)
     return entries
 
 

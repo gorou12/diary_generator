@@ -74,25 +74,51 @@ h4 {
 }
 
 /* === リンクカード === */
-
-.link-card {
-    border: 1px solid #ddd;
-    padding: 12px;
+.video-embed {
     margin: 16px 0;
     border-radius: 8px;
+    overflow: hidden;
+}
+
+.link-card {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin: 16px 0;
+    text-decoration: none;
+    overflow: hidden;
     background: #fafafa;
 }
 
 .link-card a {
     text-decoration: none;
-    color: #333;
-    display: block;
+}
+
+.link-card img {
+    width: 400px;
+    height: auto;
+    object-fit: cover;
+}
+
+.link-card .text {
+    padding: 10px;
+    flex: 1;
+}
+
+.link-card .title {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.link-card .description {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
 }
 
 .link-card .url {
-    overflow-wrap: break-word;
-    margin: 0;
-    font-size: 14px;
+    font-size: 12px;
+    color: #888;
 }
 
 /* === ハッシュタグ === */
@@ -270,13 +296,17 @@ html.dark .topic, html.dark .content-of-day {
     background: #1e1e1e;
 }
 
-html.dark .link-card {
-    border: 1px solid #555;
+html.dark .video-embed, html.dark .link-card {
     background: #2a2a2a;
+    border: 1px solid #555;
 }
 
-html.dark .link-card a {
-    color: #ddd;
+html.dark .link-card .description {
+    color: #aaa;
+}
+
+html.dark .link-card .url {
+    color: #777;
 }
 
 html.dark .sidebar {
