@@ -18,8 +18,8 @@
             </ul>
         </div>
         <div class="content">
-            {% for para in entry.content %}
-            <p>{{ para }}</p>
+            {% for para in entry.content_html %}
+            <p>{{ para | safe }}</p>
             {% endfor %}
         </div>
     </div>

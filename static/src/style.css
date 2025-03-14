@@ -73,6 +73,28 @@ h4 {
     margin: 10px 0;
 }
 
+/* === リンクカード === */
+
+.link-card {
+    border: 1px solid #ddd;
+    padding: 12px;
+    margin: 16px 0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.link-card a {
+    text-decoration: none;
+    color: #333;
+    display: block;
+}
+
+.link-card .url {
+    overflow-wrap: break-word;
+    margin: 0;
+    font-size: 14px;
+}
+
 /* === ハッシュタグ === */
 .hashtags ul {
     padding: 0;
@@ -246,6 +268,15 @@ html.dark .daily {
 html.dark .topic, html.dark .content-of-day {
     border: 1px solid #555;
     background: #1e1e1e;
+}
+
+html.dark .link-card {
+    border: 1px solid #555;
+    background: #2a2a2a;
+}
+
+html.dark .link-card a {
+    color: #ddd;
 }
 
 html.dark .sidebar {

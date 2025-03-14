@@ -17,8 +17,8 @@
             </ul>
         </div>
         <div class="content">
-            {% for para in topic.content %}
-            <p>{{ para }}</p>
+            {% for para in topic.content_html %}
+            <p>{{ para | safe }}</p>
             {% endfor %}
         </div>
     </div>
