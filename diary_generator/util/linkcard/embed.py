@@ -1,5 +1,7 @@
+import json
 import re
 
+import requests
 
 ### Embed
 
@@ -39,7 +41,19 @@ def niconico(url):
 
 
 def twitter(url):
-    return f"""
-    <blockquote class="twitter-tweet"><a href="{url}">{url}</a></blockquote>
-    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-    """
+    # ToDo: embedデータは出来れば保存したい
+    oembed_url = f"https://publish.twitter.com/oembed?url={url}"
+    try:
+        response = requests.get(oembed_url, timeout=5)
+
+        if response.status_code != 200:
+            return f'<a href="{url}" target="_blank">{url}</a>'
+
+        oembed_data = response.json()
+        print(f"✅ ツイート取得: {url}")
+        return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
+
+    except Exception as e:
+        print(f"⚠️ ツイート取得失敗: {url} - {e}")
+
+    return f'<a href="{url}" target="_blank">{url}</a>'
