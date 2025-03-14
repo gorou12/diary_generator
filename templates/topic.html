@@ -3,11 +3,11 @@
 {% block content %}
 <h2>{{ topic_name }}</h2>
 
-{% for date_entry in entries %}
+{% for topic_entry in entries %}
 <div class="daily">
-    <h3>{{ date_entry.date }} <a href="/dates/{{ date_entry.date_raw }}.html" class="icon-link">📅</a></h3>
+    <h3>{{ topic_entry.date }} <a href="/dates/{{ topic_entry.date_raw }}.html" class="icon-link">📅</a></h3>
     
-    {% for entry in date_entry.entries %}
+    {% for entry in topic_entry.entries %}
     <div class="content-of-day">
         <h4>{{ entry.title }} <a href="/topics/{{ entry.title }}.html" class="icon-link">🔍</a></h4>
         <div class="hashtags">

@@ -39,6 +39,7 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
                             "title": entry.title,
                             "hashtags": entry.hashtags,
                             "content": entry.content,
+                            "content_html": entry.content_html,
                         }
                         for entry in grouped_by_date[date]
                     ],
