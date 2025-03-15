@@ -21,5 +21,13 @@ def reflesh_files():
 
 
 def copy_static_files():
-    shutil.copytree("static", "output", dirs_exist_ok=True)
+    """
+    output/staticを作り直す
+    """
+    shutil.rmtree(config.FILE_NAMES.OUTPUT_STATIC_FILES_DIR_NAME)
+    shutil.copytree(
+        config.FILE_NAMES.STATIC_FILES_DIR_NAME,
+        config.FILE_NAMES.OUTPUT_STATIC_FILES_DIR_NAME,
+        dirs_exist_ok=True,
+    )
     print("✅静的ファイルコピー完了！")
