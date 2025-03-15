@@ -73,6 +73,13 @@ h4 {
     margin: 10px 0;
 }
 
+.content img {
+    width: 520px;
+    height: auto;
+    object-fit: cover;
+    border: solid 1px #777777;
+}
+
 /* === リンクカード === */
 .video-embed {
     margin: 16px 0;

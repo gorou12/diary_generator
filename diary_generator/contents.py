@@ -5,6 +5,7 @@ import re
 from . import notion_api, utils
 from .models import Config, DiaryEntry, Topic
 from .util.linkcard import linkcard, ogp_cache
+from .util.img import generate_image_tag
 
 
 def get(config: Config) -> list[DiaryEntry]:
@@ -98,6 +99,16 @@ def _read_page_content(page_id: str) -> list:
                 topics.append(current_topic)  # 既存のトピックを保存
 
             current_topic = {"title": text_content, "content": [], "hashtags": []}
+        elif block_type == "image":  # 画像
+            if block["type"] == "image":
+                if block["image"]["type"] == "external":
+                    url = block["image"]["external"]["url"]
+                elif block["image"]["type"] == "file":
+                    url = block["image"]["file"]["url"]
+                else:
+                    continue  # 不明なタイプなら無視
+                id = block.get("id")
+                current_topic["content"].append(generate_image_tag(id, url))
         elif text_content.startswith("#"):
             hashtags = re.findall(r"#(\S+)", text_content)
             current_topic["hashtags"].extend(hashtags)
