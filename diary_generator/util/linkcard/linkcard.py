@@ -1,14 +1,15 @@
 import re
 
-from . import embed
-from .ogp import fetch_data, generate_card
+from diary_generator.util import linkcard
+from diary_generator.util.linkcard import embed
+from diary_generator.util.linkcard.ogp import fetch_data, generate_card
 
 
-def create(contents: list[str], ogp_cache: dict) -> list[str]:
-    return [_sub_link_card(content, ogp_cache) for content in contents]
+def create(contents: list[str]) -> list[str]:
+    return [_sub_link_card(content) for content in contents]
 
 
-def _sub_link_card(text: str, ogp_cache: dict) -> str:
+def _sub_link_card(text: str) -> str:
     url_pattern = re.compile(r'(https?://[^\s<>"\'\)\]]+)')
 
     def replace_url(match):
@@ -22,12 +23,12 @@ def _sub_link_card(text: str, ogp_cache: dict) -> str:
         elif "x.com" in url:
             return embed.twitter(url)
         else:
-            if url in ogp_cache:
-                return generate_card(url, ogp_cache[url])
+            if url in linkcard.ogp_cache:
+                return generate_card(url, linkcard.ogp_cache[url])
             else:
                 ogp_data = fetch_data(url)
                 if ogp_data:
-                    ogp_cache[url] = ogp_data
+                    linkcard.ogp_cache[url] = ogp_data
                     return generate_card(url, ogp_data)
                 else:
                     return f'<a href="{url}" target="_blank">{url}</a>'

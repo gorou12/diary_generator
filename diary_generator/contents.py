@@ -6,7 +6,7 @@ from diary_generator import notion_api
 from diary_generator.config.configuration import config
 from diary_generator.models import DiaryEntry, Topic
 from diary_generator.util.img import generate_image_tag
-from diary_generator.util.linkcard import linkcard, ogp_cache
+from diary_generator.util.linkcard import cache, linkcard
 
 
 def get() -> list[DiaryEntry]:
@@ -38,15 +38,14 @@ def _write_json(json_path: str, content: any):
 def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
     entries = []
 
-    # OGP用キャッシュ読み込み
-    cache = ogp_cache.load_cache()
+    cache.initialize()
 
     for entry_data in raw_data:
         topics = [
             Topic(
                 title=topic_data["title"],
                 content=topic_data["content"],
-                content_html=linkcard.create(topic_data["content"], cache),
+                content_html=linkcard.create(topic_data["content"]),
                 hashtags=topic_data["hashtags"],
             )
             for topic_data in entry_data["topics"]
@@ -55,7 +54,7 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
         entries.append(entry)
 
     # OGP用キャッシュ再書き込み
-    ogp_cache.save_cache(cache)
+    cache.save_cache()
     return entries
 
 

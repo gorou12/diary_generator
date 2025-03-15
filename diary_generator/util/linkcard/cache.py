@@ -1,18 +1,25 @@
 import json
 import os
 
-CACHE_FILE = "output/ogp_cache.json"
+from diary_generator.config.configuration import config
+from diary_generator.util import linkcard
 
 
-def load_cache() -> dict:
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    print("📁キャッシュロード完了")
-    return {}
+def initialize():
+    if os.path.exists(config.FILE_NAMES.CACHE_OGP_PATH):
+        with open(config.FILE_NAMES.CACHE_OGP_PATH, "r", encoding="utf-8") as f:
+            linkcard.ogp_cache = json.load(f)
+    if os.path.exists(config.FILE_NAMES.CACHE_TWITTER_PATH):
+        with open(config.FILE_NAMES.CACHE_TWITTER_PATH, "r", encoding="utf-8") as f:
+            linkcard.twitter_cache = json.load(f)
+
+    print("📁OGPキャッシュロード完了")
+    return
 
 
-def save_cache(cache: dict):
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache, f, ensure_ascii=False, indent=2)
-    print("📝キャッシュセーブ完了")
+def save_cache():
+    with open(config.FILE_NAMES.CACHE_OGP_PATH, "w", encoding="utf-8") as f:
+        json.dump(linkcard.ogp_cache, f, ensure_ascii=False, indent=2)
+    with open(config.FILE_NAMES.CACHE_TWITTER_PATH, "w", encoding="utf-8") as f:
+        json.dump(linkcard.twitter_cache, f, ensure_ascii=False, indent=2)
+    print("📝OGPキャッシュセーブ完了")

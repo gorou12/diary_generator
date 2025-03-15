@@ -1,16 +1,14 @@
-import configparser
-
 import requests
 from bs4 import BeautifulSoup
 
-config = configparser.ConfigParser()
-config.read("config/settings.ini", encoding="utf-8")
+from diary_generator.config.configuration import config
+from diary_generator.util import linkcard
 
 
 def generate_card(url: str, ogp_data: dict) -> str:
     image_html = f'<img src="{ogp_data["image"]}" alt="">' if ogp_data["image"] else ""
 
-    maxlen = config.getint("ogp", "MaxDescriptionLength", fallback=90)
+    maxlen = config.MAX_OGP_LEN
     description = ogp_data["description"][0:maxlen] + (
         "..." if len(ogp_data["description"]) > maxlen else ""
     )
@@ -49,6 +47,7 @@ def fetch_data(url: str) -> dict | None:
             "description": soup.find("meta", property="og:description"),
             "image": soup.find("meta", property="og:image"),
         }
+        print(f"✅ OGP取得成功: {url}")
 
         return {
             "title": ogp["title"]["content"]

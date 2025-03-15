@@ -1,1 +1,4 @@
-from . import cache as ogp_cache
+from . import cache
+
+ogp_cache: dict[str, dict] = {}
+twitter_cache: dict[str, dict] = {}
