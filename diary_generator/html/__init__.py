@@ -1,3 +1,1 @@
-from . import index
-from . import topics
-from . import dates
+from . import dates, index, topics

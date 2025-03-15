@@ -1,5 +1,5 @@
-from .configuration import Config
 from . import configuration
+from .configuration import Config
 
 
 def getConfig() -> Config:

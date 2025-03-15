@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 
 from diary_generator.config.configuration import config
-from diary_generator.util import linkcard
 
 
 def generate_card(url: str, ogp_data: dict) -> str:

@@ -1,4 +1,4 @@
-from .client import notion_request
+from diary_generator.notion_api.client import notion_request
 
 
 def query_database(database_id: str, query: dict = None) -> dict:

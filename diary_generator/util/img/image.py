@@ -1,4 +1,4 @@
-from .download_image import download_image
+from diary_generator.util.img.download_image import download_image
 
 
 def generate_image_tag(id: str, url: str, alt_text="") -> str:

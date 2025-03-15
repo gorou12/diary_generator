@@ -1,2 +1,1 @@
-from . import list
-from . import detail
+from . import detail, list
