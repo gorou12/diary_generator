@@ -22,6 +22,10 @@ def _sub_link_card(text: str) -> str:
             return embed.twitter(url)
         elif "x.com" in url:
             return embed.twitter(url)
+        elif "bsky.app" in url:
+            return embed.bluesky(url)
+        elif "mstdn.pokete.com" in url:
+            return embed.poketedon(url)
         else:
             if url in linkcard.ogp_cache:
                 return generate_card(url, linkcard.ogp_cache[url])

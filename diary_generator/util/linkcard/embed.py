@@ -40,9 +40,9 @@ def niconico(url: str):
 
 
 def twitter(url: str):
-    if url in linkcard.twitter_cache:
+    if url in linkcard.oembed_cache:
         print(f"✅ ツイートキャッシュヒット: {url}")
-        return linkcard.twitter_cache.get(url).get(
+        return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
 
@@ -54,7 +54,7 @@ def twitter(url: str):
             return f'<a href="{url}" target="_blank">{url}</a>'
 
         oembed_data = response.json()
-        linkcard.twitter_cache[url] = oembed_data
+        linkcard.oembed_cache[url] = oembed_data
         print(f"✅ ツイート取得: {url}")
         return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
 
@@ -62,3 +62,57 @@ def twitter(url: str):
         print(f"⚠️ ツイート取得失敗: {url} - {e}")
 
     return f'<a href="{url}" target="_blank">{url}</a>'
+
+
+def bluesky(url: str):
+    if url in linkcard.oembed_cache:
+        print(f"✅ ポストキャッシュヒット: {url}")
+        return linkcard.oembed_cache.get(url).get(
+            "html", f'<a href="{url}" target="_blank">{url}</a>'
+        )
+
+    oembed_url = f"https://embed.bsky.app/oembed?url={url}"
+    try:
+        response = requests.get(oembed_url, timeout=5)
+
+        if response.status_code != 200:
+            return f'<a href="{url}" target="_blank">{url}</a>'
+
+        oembed_data = response.json()
+        linkcard.oembed_cache[url] = oembed_data
+        print(f"✅ ポスト取得: {url}")
+        return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
+
+    except Exception as e:
+        print(f"⚠️ ポスト取得失敗: {url} - {e}")
+
+    return f'<a href="{url}" target="_blank">{url}</a>'
+
+
+def poketedon(url: str):
+    if url in linkcard.oembed_cache:
+        print(f"✅ トゥートキャッシュヒット: {url}")
+        return linkcard.oembed_cache.get(url).get(
+            "html", f'<a href="{url}" target="_blank">{url}</a>'
+        )
+
+    oembed_url = f"https://mstdn.pokete.com/api/oembed?url={url}"
+    try:
+        response = requests.get(oembed_url, timeout=5)
+
+        if response.status_code != 200:
+            return f'<a href="{url}" target="_blank">{url}</a>'
+
+        oembed_data = response.json()
+        linkcard.oembed_cache[url] = oembed_data
+        print(f"✅ トゥート取得: {url}")
+        return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
+
+    except Exception as e:
+        print(f"⚠️ トゥート取得失敗: {url} - {e}")
+
+    return f'<a href="{url}" target="_blank">{url}</a>'
+
+
+# TODO: https://oembed.com/providers.json みたいなのを作ったらいい
+# (そのまま読み込んでも絶対無駄が多い＆Mastodonが無いので、configあたりにお手製で作ったほうがいい)
