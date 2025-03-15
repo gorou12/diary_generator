@@ -4,8 +4,8 @@ import re
 
 from . import notion_api, utils
 from .models import Config, DiaryEntry, Topic
-from .util.linkcard import linkcard, ogp_cache
 from .util.img import generate_image_tag
+from .util.linkcard import linkcard, ogp_cache
 
 
 def get(config: Config) -> list[DiaryEntry]:
