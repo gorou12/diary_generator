@@ -6,6 +6,7 @@ __pycache__/
 .env
 generate
 output
+cache
 *.json
 
 # uv

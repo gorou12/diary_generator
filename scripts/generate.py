@@ -1,7 +1,6 @@
 import argparse
 
-from diary_generator import generator
-from diary_generator.models.config import load_config
+from diary_generator import config, generator
 
 
 def main():
@@ -9,8 +8,9 @@ def main():
     parser.add_argument("--use-cache", action="store_true", help="キャッシュを使用する")
     args = parser.parse_args()
 
-    config = load_config("config/settings.ini", "config/page.ini", args.use_cache)
-    generator.generate_all(config)
+    config.configuration.set_use_cache(args.use_cache)
+
+    generator.generate_all()
 
 
 if __name__ == "__main__":

@@ -1,1 +1,2 @@
-from . import contents, utils
+from .util import utilities
+from . import contents

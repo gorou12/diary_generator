@@ -1,12 +1,10 @@
-import os
+from diary_generator.config.configuration import config
+from diary_generator.models import DiaryEntry
+from diary_generator.util import utilities
 
-from ... import utils
-from ...models import Config, DiaryEntry
 
-
-def generate(diary_entries: list[DiaryEntry], config: Config):
-    os.makedirs("output/dates", exist_ok=True)
-
+def generate(diary_entries: list[DiaryEntry]):
+    dates_dir = config.FILE_NAMES.OUTPUT_DATES_DIR_NAME
     dates_nav = _create_dates_nav(diary_entries)
 
     for diary_entry in diary_entries:
@@ -21,8 +19,8 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
             "newest_date": dates_nav[date]["newest"],
             "sidebar_content": "",  # 必要ならランキングなど入れる
         }
-        output_file = f"output/dates/{date}.html"
-        utils.render_template("date.html", context, output_file)
+        output_file = f"{dates_dir}{date}.html"
+        utilities.render_template("date.html", context, output_file)
     print("✅ 日付ページを生成しました！")
 
 

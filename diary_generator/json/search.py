@@ -1,12 +1,14 @@
 import json
 
-from ..models import Config, DiaryEntry
+from diary_generator.config.configuration import config
+from diary_generator.models import DiaryEntry
 
 
-def generate(diary_entries: list[DiaryEntry], config: Config):
+def generate(diary_entries: list[DiaryEntry]):
     """全文検索用の search_data.json を生成する"""
     print("🔄 本文検索用データ (search_data.json) を生成中...")
 
+    output_path = config.FILE_NAMES.OUTPUT_JSON_DIR_NAME
     search_items = []
 
     for diary_entry in diary_entries:
@@ -26,7 +28,7 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
             )
 
     # JSONファイルとして保存
-    with open("output/search_data.json", "w", encoding="utf-8") as f:
+    with open(f"{output_path}search_data.json", "w", encoding="utf-8") as f:
         json.dump(search_items, f, ensure_ascii=False, indent=2)
 
     print(f"✅ search_data.json を {len(search_items)} 件生成しました！")

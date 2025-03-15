@@ -2,33 +2,37 @@ import json
 import os
 import re
 
-from . import notion_api, utils
-from .models import Config, DiaryEntry, Topic
-from .util.img import generate_image_tag
-from .util.linkcard import linkcard, ogp_cache
+from diary_generator import notion_api
+from diary_generator.config.configuration import config
+from diary_generator.models import DiaryEntry, Topic
+from diary_generator.util.img import generate_image_tag
+from diary_generator.util.linkcard import linkcard, ogp_cache
 
 
-def get(config: Config) -> list[DiaryEntry]:
-    cache_file_name = config.cache_file_name
-    use_cache = config.use_cache
+def get() -> list[DiaryEntry]:
+    cache_file_name = config.FILE_NAMES.CACHE_DIARY_PATH
+    use_cache = config.USE_CACHE
 
     if use_cache and os.path.exists(cache_file_name):
         print("✅ キャッシュからデータを読み込みます")
-        raw_data = _read_content_json(cache_file_name)
+        raw_data = _read_json(cache_file_name)
     else:
-        raw_data = _read_notion_data(cache_file_name)
+        raw_data = _fetch_diary_db()
+        _write_json(cache_file_name, raw_data)
 
     return _parse_json_to_diary_entries(raw_data)
 
 
-def _read_content_json(json_path: str) -> list[DiaryEntry]:
+def _read_json(json_path: str) -> list[DiaryEntry]:
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
+    print("✅ ロード完了")
 
 
-def _write_content_json(json_path: str, content: any):
+def _write_json(json_path: str, content: any):
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
+    print("✅ キャッシュ完了")
 
 
 def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
@@ -55,9 +59,9 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
     return entries
 
 
-def _read_notion_data(cache_file_name: str):
+def _fetch_diary_db():
     print("🔄 Notion API からデータを取得中...")
-    data = notion_api.query_database(utils.get_notion_database_id())
+    data = notion_api.query_database(config.ENV.NOTION_DATABASE_ID)
 
     all_pages = []
     for item in data.get("results", []):
@@ -69,16 +73,15 @@ def _read_notion_data(cache_file_name: str):
         if not date or not is_public:
             continue  # 非公開ページはスキップ
 
-        topics = _read_page_content(page_id)
+        topics = _fetch_diary_page(page_id)
         print(f"- 日付データ({date}) 取得完了")
         all_pages.append({"date": date, "topics": topics})
 
-    _write_content_json(cache_file_name, all_pages)
-    print("✅ Notionデータ取得＆キャッシュ完了")
+    print("✅ Notionデータ取得")
     return all_pages
 
 
-def _read_page_content(page_id: str) -> list:
+def _fetch_diary_page(page_id: str) -> list:
     data = notion_api.get_block_children(page_id)
 
     blocks = data.get("results", [])

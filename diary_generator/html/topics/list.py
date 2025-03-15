@@ -1,10 +1,12 @@
 from collections import Counter
 
-from ... import utils
-from ...models import Config, DiaryEntry
+from diary_generator.config.configuration import config
+from diary_generator.models import DiaryEntry
+from diary_generator.util import utilities
 
 
-def generate(diary_entries: list[DiaryEntry], config: Config):
+def generate(diary_entries: list[DiaryEntry]):
+    output_dir = config.FILE_NAMES.OUTPUT_BASE_DIR_NAME
     topic_counter = Counter()
     for diary_entry in diary_entries:
         for topic in diary_entry.topics:
@@ -17,12 +19,16 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
         tpl for tpl in sorted_topics if tpl[1] >= 2
     ]  # Counterが2以上のものだけ
 
-    pages, total_pages = utils.paginate_list(sorted_topics, config.topiclist.paginate)
+    pages, total_pages = utilities.paginate_list(
+        sorted_topics, config.PAGINATE.TOPIC_LIST
+    )
 
     for idx, page_items in enumerate(pages):
         page_num = idx + 1
         filename = (
-            f"output/topics_{page_num}.html" if page_num > 1 else "output/topics.html"
+            f"{output_dir}topics_{page_num}.html"
+            if page_num > 1
+            else f"{output_dir}topics.html"
         )
 
         # ページネーションリンク作成
@@ -44,6 +50,6 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
             "pagination": pagination,
             "sidebar_content": "",
         }
-        utils.render_template("topics.html", context, filename)
+        utilities.render_template("topics.html", context, filename)
 
     print("✅ トピック一覧ページ（ページネーション付き）を生成しました！")

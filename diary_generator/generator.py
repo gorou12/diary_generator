@@ -1,17 +1,17 @@
-from . import contents, copystatics, html, json
-from .models import Config
+from diary_generator import contents, filemaintenance, html, json
 
 
-def generate_all(config: Config):
+def generate_all():
     # 日記データの取得
-    diary_entries = contents.get(config)
+    diary_entries = contents.get()
 
-    html.index.generate(diary_entries, config)
-    html.dates.list.generate(diary_entries, config)
-    html.dates.detail.generate(diary_entries, config)
-    html.topics.list.generate(diary_entries, config)
-    html.topics.detail.generate(diary_entries, config)
+    filemaintenance.reflesh_files()
+    filemaintenance.copy_static_files()
 
-    json.search.generate(diary_entries, config)
+    html.index.generate(diary_entries)
+    html.dates.list.generate(diary_entries)
+    html.dates.detail.generate(diary_entries)
+    html.topics.list.generate(diary_entries)
+    html.topics.detail.generate(diary_entries)
 
-    copystatics.copy_static_files()
+    json.search.generate(diary_entries)

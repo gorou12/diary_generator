@@ -1,14 +1,18 @@
-from .. import utils
-from ..models import Config, DiaryEntry
+from diary_generator.config.configuration import config
+from diary_generator.models import DiaryEntry
+from diary_generator.util import utilities
 
 
-def generate(diary_entries: list[DiaryEntry], config: Config):
-    pages, total_pages = utils.paginate_list(diary_entries, config.indexpage.paginate)
+def generate(diary_entries: list[DiaryEntry]):
+    output_dir = config.FILE_NAMES.OUTPUT_BASE_DIR_NAME
+    pages, total_pages = utilities.paginate_list(diary_entries, config.PAGINATE.INDEX)
 
     for idx, page_items in enumerate(pages):
         page_num = idx + 1
         filename = (
-            f"output/index_{page_num}.html" if page_num > 1 else "output/index.html"
+            f"{output_dir}index_{page_num}.html"
+            if page_num > 1
+            else f"{output_dir}index.html"
         )
 
         # ページネーションリンク作成
@@ -28,6 +32,6 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
             "sidebar_content": "",  # 必要ならサイドバー人気トピックなど
         }
 
-        utils.render_template("index.html", context, filename)
+        utilities.render_template("index.html", context, filename)
 
     print("✅ トップページ（ページネーション付き）を生成しました！")

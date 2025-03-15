@@ -1,13 +1,12 @@
-import os
 from collections import defaultdict
 
-from ... import utils
-from ...models import Config, DiaryEntry
+from diary_generator.config.configuration import config
+from diary_generator.models import DiaryEntry
+from diary_generator.util import utilities
 
 
-def generate(diary_entries: list[DiaryEntry], config: Config):
-    os.makedirs("output/topics", exist_ok=True)
-
+def generate(diary_entries: list[DiaryEntry]):
+    topics_dir = config.FILE_NAMES.OUTPUT_TOPICS_DIR_NAME
     combined_dict = defaultdict(list)
 
     # トピック・ハッシュタグの収集
@@ -50,7 +49,7 @@ def generate(diary_entries: list[DiaryEntry], config: Config):
         }
 
         # ファイル出力
-        output_file = f"output/topics/{topic}.html"
-        utils.render_template("topic.html", context, output_file)
+        output_file = f"{topics_dir}{topic}.html"
+        utilities.render_template("topic.html", context, output_file)
 
     print("✅ トピックページ（ハッシュタグ含む）を生成しました！（Jinja2版）")
