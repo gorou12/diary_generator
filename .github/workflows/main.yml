@@ -34,4 +34,4 @@ jobs:
             cd ~gorou12/diary_generator
             /home/gorou12/.local/bin/uv sync
             /home/gorou12/.local/bin/uv run -m scripts.generate
-            rsync -avz --delete output/ /var/www/html/diary/
+            rsync -a --delete output/ /var/www/html/diary/
