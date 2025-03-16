@@ -1,8 +1,8 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
-from diary_generator.logger.discord_handler import DiscordHandler
 from diary_generator.config.configuration import config
+from diary_generator.logger.discord_handler import DiscordHandler
 
 # 共通Logger
 logger = logging.getLogger("diary_system")
