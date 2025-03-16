@@ -31,12 +31,10 @@ console_format = logging.Formatter(
 console_handler.setFormatter(console_format)
 logger.addHandler(console_handler)
 
-# 必要なら、ここでチャット送信用のカスタムHandlerも作れる（後述）
+# Discord出力
 discord_handler = DiscordHandler()
 discord_handler.setLevel(logging.WARN)
-discord_format = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s"
-)
+discord_format = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 discord_handler.setFormatter(discord_format)
 logger.addHandler(discord_handler)
 
