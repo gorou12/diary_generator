@@ -2,7 +2,10 @@ import re
 
 import requests
 
+from diary_generator.logger import logger
 from diary_generator.util import linkcard
+
+log = logger.get_logger()
 
 
 def youtube(url: str):
@@ -41,7 +44,7 @@ def niconico(url: str):
 
 def twitter(url: str):
     if url in linkcard.oembed_cache:
-        print(f"✅ ツイートキャッシュヒット: {url}")
+        log.info(f"✅ ツイートキャッシュヒット: {url}")
         return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
@@ -55,18 +58,18 @@ def twitter(url: str):
 
         oembed_data = response.json()
         linkcard.oembed_cache[url] = oembed_data
-        print(f"✅ ツイート取得: {url}")
+        log.info(f"✅ ツイート取得: {url}")
         return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
 
-    except Exception as e:
-        print(f"⚠️ ツイート取得失敗: {url} - {e}")
+    except Exception as _:
+        log.warning(f"⚠️ ツイート取得失敗: {url}", exc_info=True)
 
     return f'<a href="{url}" target="_blank">{url}</a>'
 
 
 def bluesky(url: str):
     if url in linkcard.oembed_cache:
-        print(f"✅ ポストキャッシュヒット: {url}")
+        log.info(f"✅ ポストキャッシュヒット: {url}")
         return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
@@ -80,18 +83,18 @@ def bluesky(url: str):
 
         oembed_data = response.json()
         linkcard.oembed_cache[url] = oembed_data
-        print(f"✅ ポスト取得: {url}")
+        log.info(f"✅ ポスト取得: {url}")
         return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
 
-    except Exception as e:
-        print(f"⚠️ ポスト取得失敗: {url} - {e}")
+    except Exception as _:
+        log.warning(f"⚠️ ポスト取得失敗: {url}", exc_info=True)
 
     return f'<a href="{url}" target="_blank">{url}</a>'
 
 
 def poketedon(url: str):
     if url in linkcard.oembed_cache:
-        print(f"✅ トゥートキャッシュヒット: {url}")
+        log.info(f"✅ トゥートキャッシュヒット: {url}")
         return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
@@ -105,11 +108,11 @@ def poketedon(url: str):
 
         oembed_data = response.json()
         linkcard.oembed_cache[url] = oembed_data
-        print(f"✅ トゥート取得: {url}")
+        log.info(f"✅ トゥート取得: {url}")
         return oembed_data.get("html", f'<a href="{url}" target="_blank">{url}</a>')
 
-    except Exception as e:
-        print(f"⚠️ トゥート取得失敗: {url} - {e}")
+    except Exception as _:
+        log.warning(f"⚠️ トゥート取得失敗: {url}", exc_info=True)
 
     return f'<a href="{url}" target="_blank">{url}</a>'
 

@@ -1,8 +1,12 @@
 from collections import defaultdict
 
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry
 from diary_generator.util import utilities
+
+
+log = logger.get_logger()
 
 
 def generate(diary_entries: list[DiaryEntry]):
@@ -51,4 +55,4 @@ def generate(diary_entries: list[DiaryEntry]):
         output_file = f"{topics_dir}{topic}.html"
         utilities.render_template("topic.html", context, output_file)
 
-    print("✅ トピックページ（ハッシュタグ含む）を生成しました！（Jinja2版）")
+    log.info("✅ トピックページ（ハッシュタグ含む）を生成しました！（Jinja2版）")

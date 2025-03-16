@@ -1,8 +1,12 @@
 from collections import Counter
 
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry
 from diary_generator.util import utilities
+
+
+log = logger.get_logger()
 
 
 def generate(diary_entries: list[DiaryEntry]):
@@ -51,4 +55,4 @@ def generate(diary_entries: list[DiaryEntry]):
         }
         utilities.render_template("topics.html", context, filename)
 
-    print("✅ トピック一覧ページ（ページネーション付き）を生成しました！")
+    log.info("✅ トピック一覧ページ（ページネーション付き）を生成しました！")

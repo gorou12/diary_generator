@@ -1,6 +1,9 @@
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry
 from diary_generator.util import utilities
+
+log = logger.get_logger()
 
 
 def generate(diary_entries: list[DiaryEntry]):
@@ -20,7 +23,7 @@ def generate(diary_entries: list[DiaryEntry]):
         }
         output_file = f"{dates_dir}{date}.html"
         utilities.render_template("date.html", context, output_file)
-    print("✅ 日付ページを生成しました！")
+    log.info("✅ 日付ページを生成しました！")
 
 
 def _create_dates_nav(diary_entries: list[DiaryEntry]) -> dict:

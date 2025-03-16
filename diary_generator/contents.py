@@ -4,9 +4,12 @@ import re
 
 from diary_generator import notion_api
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry, Topic
 from diary_generator.util.img import generate_image_tag
 from diary_generator.util.linkcard import cache, linkcard
+
+log = logger.get_logger()
 
 
 def get() -> list[DiaryEntry]:
@@ -14,7 +17,7 @@ def get() -> list[DiaryEntry]:
     use_cache = config.USE_CACHE
 
     if use_cache and os.path.exists(cache_file_name):
-        print("✅ キャッシュからデータを読み込みます")
+        log.info("✅ キャッシュからデータを読み込みます")
         raw_data = _read_json(cache_file_name)
     else:
         raw_data = _fetch_diary_db()
@@ -26,13 +29,13 @@ def get() -> list[DiaryEntry]:
 def _read_json(json_path: str) -> list[DiaryEntry]:
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
-    print("✅ ロード完了")
+    log.info("✅ ロード完了")
 
 
 def _write_json(json_path: str, content: any):
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(content, f, ensure_ascii=False, indent=4)
-    print("✅ キャッシュ完了")
+    log.info("✅ キャッシュ完了")
 
 
 def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
@@ -59,7 +62,7 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
 
 
 def _fetch_diary_db():
-    print("🔄 Notion API からデータを取得中...")
+    log.info("🔄 Notion API からデータを取得中...")
     data = notion_api.query_database(config.ENV.NOTION_DATABASE_ID)
 
     all_pages = []
@@ -73,10 +76,10 @@ def _fetch_diary_db():
             continue  # 非公開ページはスキップ
 
         topics = _fetch_diary_page(page_id)
-        print(f"- 日付データ({date}) 取得完了")
+        log.info(f"- 日付データ({date}) 取得完了")
         all_pages.append({"date": date, "topics": topics})
 
-    print("✅ Notionデータ取得")
+    log.info("✅ Notionデータ取得")
     return all_pages
 
 

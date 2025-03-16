@@ -1,6 +1,9 @@
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry
 from diary_generator.util import utilities
+
+log = logger.get_logger()
 
 
 def generate(diary_entries: list[DiaryEntry]):
@@ -33,4 +36,4 @@ def generate(diary_entries: list[DiaryEntry]):
 
         utilities.render_template("index.html", context, filename)
 
-    print("✅ トップページ（ページネーション付き）を生成しました！")
+    log.info("✅ トップページ（ページネーション付き）を生成しました！")

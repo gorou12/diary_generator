@@ -3,6 +3,9 @@ import os
 import shutil
 
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
+
+log = logger.get_logger()
 
 
 def reflesh_files():
@@ -30,4 +33,4 @@ def copy_static_files():
         config.FILE_NAMES.OUTPUT_BASE_DIR_NAME,
         dirs_exist_ok=True,
     )
-    print("✅静的ファイルコピー完了！")
+    log.info("✅静的ファイルコピー完了！")

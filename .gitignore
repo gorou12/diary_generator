@@ -8,6 +8,7 @@ generate
 output
 cache
 *.json
+logs
 
 # uv
 .venv

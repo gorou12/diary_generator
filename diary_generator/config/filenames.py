@@ -12,6 +12,8 @@ class FileName:
 
     STATIC_FILES_DIR_NAME: str = "static/"
 
+    LOG_DIR_NAME: str = "logs/"
+
     OUTPUT_BASE_DIR_NAME: str = "output/"
     OUTPUT_DATES_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}dates/"
     OUTPUT_TOPICS_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}topics/"
@@ -22,6 +24,7 @@ class FileName:
     def __post_init__(self):
         os.makedirs(self.CACHE_DIR_NAME, exist_ok=True)
         # STATIC_FILES_DIR_NAMEはプロジェクトフォルダなので作らない
+        os.makedirs(self.LOG_DIR_NAME, exist_ok=True)
         os.makedirs(self.CACHE_DIR_NAME, exist_ok=True)
         os.makedirs(self.OUTPUT_BASE_DIR_NAME, exist_ok=True)
         os.makedirs(self.OUTPUT_DATES_DIR_NAME, exist_ok=True)

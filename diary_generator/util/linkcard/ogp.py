@@ -2,6 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 
 from diary_generator.config.configuration import config
+from diary_generator.logger import logger
+
+log = logger.get_logger()
 
 
 def generate_card(url: str, ogp_data: dict) -> str:
@@ -46,7 +49,7 @@ def fetch_data(url: str) -> dict | None:
             "description": soup.find("meta", property="og:description"),
             "image": soup.find("meta", property="og:image"),
         }
-        print(f"✅ OGP取得成功: {url}")
+        log.info(f"✅ OGP取得成功: {url}")
 
         return {
             "title": ogp["title"]["content"]
@@ -56,5 +59,5 @@ def fetch_data(url: str) -> dict | None:
             "image": ogp["image"]["content"] if ogp["image"] else "",
         }
     except Exception as e:
-        print(f"⚠️ OGP取得失敗: {url} - {e}")
+        log.info(f"⚠️ OGP取得失敗: {url} - {e}")
         return None
