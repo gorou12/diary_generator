@@ -17,7 +17,6 @@ def generate(diary_entries: list[DiaryEntry]):
             "prev_date": dates_nav[date]["prev"],
             "next_date": dates_nav[date]["next"],
             "newest_date": dates_nav[date]["newest"],
-            "sidebar_content": "",  # 必要ならランキングなど入れる
         }
         output_file = f"{dates_dir}{date}.html"
         utilities.render_template("date.html", context, output_file)

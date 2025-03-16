@@ -48,7 +48,6 @@ def generate(diary_entries: list[DiaryEntry]):
             "topics": page_items,
             "popular_topics": popular_topics[:10],
             "pagination": pagination,
-            "sidebar_content": "",
         }
         utilities.render_template("topics.html", context, filename)
 

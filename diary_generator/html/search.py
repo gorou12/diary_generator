@@ -3,9 +3,7 @@ from diary_generator.util import utilities
 
 
 def generate():
-    context = {
-        "sidebar_content": "",
-    }
+    context = {}
     utilities.render_template(
         "search.html", context, f"{config.FILE_NAMES.OUTPUT_BASE_DIR_NAME}search.html"
     )

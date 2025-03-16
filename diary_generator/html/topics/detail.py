@@ -45,7 +45,6 @@ def generate(diary_entries: list[DiaryEntry]):
                 }
                 for date in sorted(grouped_by_date.keys(), reverse=True)
             ],
-            "sidebar_content": "",  # 人気ランキングなど入れたい場合はここに
         }
 
         # ファイル出力

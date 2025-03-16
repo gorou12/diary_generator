@@ -31,7 +31,6 @@ def generate(diary_entries: list[DiaryEntry]):
             "title": "日付一覧",
             "dates": page_items,
             "pagination": pagination,
-            "sidebar_content": "",
         }
         utilities.render_template("dates.html", context, filename)
 

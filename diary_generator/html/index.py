@@ -29,7 +29,6 @@ def generate(diary_entries: list[DiaryEntry]):
             "title": "日記ブログ",
             "entries": page_items,
             "pagination": pagination,
-            "sidebar_content": "",  # 必要ならサイドバー人気トピックなど
         }
 
         utilities.render_template("index.html", context, filename)

@@ -1,1 +1,3 @@
-from . import dates, index, search, topics
+from . import dates, index, search, sidebar, topics
+
+sidebar_content = {}

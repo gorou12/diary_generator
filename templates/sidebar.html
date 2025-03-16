@@ -1,2 +1,2 @@
 <h3>人気のトピック</h3>
-{{ sidebar_content | safe }}
+{{ sidebar_content if sidebar_content else "" }}
