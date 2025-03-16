@@ -1,17 +1,24 @@
-from logging.handlers import HTTPHandler
+from logging import Handler
 
-from diary_generator.config.configuration import config
+import requests
+
+from diary_generator.logger import internallogger
+
+log = internallogger.get_internal_logger()
 
 
-class DiscordHandler(HTTPHandler):
-    def __init__(self):
-        super().__init__(
-            config.ENV.NOTICE_WEBHOOK_HOST,
-            config.ENV.NOTICE_WEBHOOK_PATH,
-            method="POST",
-            secure=True,
-        )
+class DiscordHandler(Handler):
+    def __init__(self, webhook_url):
+        super().__init__()
+        self.webhook_url = webhook_url
 
-    def mapLogRecord(self, record):
-        text = self.format(record)
-        return {"content": text}
+    def emit(self, record):
+        log_entry = self.format(record)
+        try:
+            requests.post(
+                self.webhook_url,
+                json={"content": log_entry},
+                timeout=5,
+            )
+        except Exception as _:
+            log.warning("⚠️ Discord通知失敗", stack_info=True)
