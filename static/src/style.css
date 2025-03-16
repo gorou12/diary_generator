@@ -282,10 +282,35 @@ nav li a:hover, nav button:hover {
     background: #005fa3;
 }
 
-/* === 明暗反転ボタン ===
-html.transition-on, body.transition-on {
-    transition: background-color 0.3s, color 0.3s;
-} */
+/* === カレンダー === */
+.calendar {
+    margin: 20px 0;
+}
+
+.calendar table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 14px;
+}
+
+.calendar th, .calendar td {
+    padding: 5px;
+    border: 1px solid #ccc;
+}
+
+.calendar a {
+    display: block;
+    padding: 5px;
+    background: #007acc;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+.calendar a:hover {
+    background: #005fa3;
+}
 
 /* === ダークモード対応 === */
 html.dark, html.dark body {
@@ -355,6 +380,14 @@ html.dark nav li a, html.dark nav button {
 }
 
 html.dark nav li a:hover, html.dark nav button:hover {
+    background: #666;
+}
+
+html.dark .calendar a {
+    background: #444;
+}
+
+html.dark .calendar a:hover {
     background: #666;
 }
 

@@ -1,2 +1,15 @@
-<h3>人気のトピック</h3>
-{{ sidebar_content if sidebar_content else "" }}
+<h3>About</h3>
+<p>日々書き留めていたり、書き留めていなかったりする日記サイト。</p>
+<p>著者：ごろう</p>
+<p>メインブログ：<a href="https://www.pokete.com/" target="_blank">ぽけ手帳</a></p>
+<p>SNS： 
+    <a href="https://x.com/gorou12" target="_blank">X</a> 
+    <a href="https://bsky.app/profile/pokete.com" target="_blank">Bluesky</a> 
+    <a href="https://mstdn.pokete.com/@gorou12" target="_blank">Mastodon</a>
+</p>
+{% if sidebar_content.calendar %}
+<h3>カレンダー</h3>
+<div class="calendar">
+    {{ sidebar_content.calendar if sidebar_content.calendar else "" | safe }}
+</div>
+{% endif %}
