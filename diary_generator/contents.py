@@ -6,6 +6,7 @@ from diary_generator import notion_api
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry, Topic
+from diary_generator.util import diarydiff
 from diary_generator.util.img import generate_image_tag
 from diary_generator.util.linkcard import cache, linkcard
 
@@ -20,8 +21,10 @@ def get() -> list[DiaryEntry]:
         log.info("✅ キャッシュからデータを読み込みます")
         raw_data = _read_json(cache_file_name)
     else:
+        diarydiff.copy_previous_json()
         raw_data = _fetch_diary_db()
         _write_json(cache_file_name, raw_data)
+        diarydiff.diff_diary_json()
 
     return _parse_json_to_diary_entries(raw_data)
 
