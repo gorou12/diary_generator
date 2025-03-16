@@ -15,7 +15,9 @@
             {% block content %}{% endblock %}
         </main>
         <aside class="sidebar">
+            {% with sidebar_content = sidebar_content %}
             {% include "sidebar.html" %}
+            {% endwith %}
         </aside>
     </div>
 </body>
