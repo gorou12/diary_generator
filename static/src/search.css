@@ -1,0 +1,15 @@
+.search-container{
+    box-sizing: border-box;
+  }
+  .search-container input[type="text"]{
+    border: 1px solid #999;
+    padding: 3px 5px;
+    border-radius: 20px;
+    height: 2.0em;
+    width: 245px;
+    overflow: hidden;
+  }
+  .search-container input[type="text"]:focus {
+    outline: 0;
+  }
+  

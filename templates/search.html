@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script defer src="/src/search.js"></script>
+<link rel="stylesheet" href="/src/search.css">
+<h2>全文検索</h2>
+
+<div class="search-container">
+    <input type="text" id="search-box" placeholder="全文検索..." onkeyup="fullTextSearch()">
+</div>
+
+<div id="search-results"></div>
+{% endblock %}
