@@ -1,6 +1,7 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
+from diary_generator.logger.discord_handler import DiscordHandler
 from diary_generator.config.configuration import config
 
 # 共通Logger
@@ -31,6 +32,13 @@ console_handler.setFormatter(console_format)
 logger.addHandler(console_handler)
 
 # 必要なら、ここでチャット送信用のカスタムHandlerも作れる（後述）
+discord_handler = DiscordHandler()
+discord_handler.setLevel(logging.WARN)
+discord_format = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d %(message)s"
+)
+discord_handler.setFormatter(discord_format)
+logger.addHandler(discord_handler)
 
 
 # 外部から import して使う
