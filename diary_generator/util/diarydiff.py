@@ -43,6 +43,6 @@ def diff_diary_json():
 
     diff = list(difflib.unified_diff(old_lines, new_lines))
     if not diff:
-        default_log("差分はなかったので、投稿のNotifyをしませんでした")
+        default_log.info("差分はなかったので、投稿のNotifyをしませんでした")
         return
     notify_log.info(f"今回の更新差分です\n```diff\n{'\n'.join(diff)}\n```")
