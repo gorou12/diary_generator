@@ -75,6 +75,7 @@ h4 {
 
 .content img {
     width: 520px;
+    max-width: 100%;
     height: auto;
     object-fit: cover;
     border: solid 1px #777777;
@@ -103,6 +104,7 @@ h4 {
 
 .link-card img {
     width: 400px;
+    max-width: auto;
     height: auto;
     object-fit: cover;
 }
@@ -392,7 +394,7 @@ html.dark .calendar a:hover {
 }
 
 /* === レスポンシブ対応（スマホ） === */
-@media (max-width: 800px) {
+@media (max-width: 940px) {
     .container {
         flex-direction: column;
         padding: 10px;
