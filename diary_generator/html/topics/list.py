@@ -5,7 +5,6 @@ from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry
 from diary_generator.util import utilities
 
-
 log = logger.get_logger()
 
 
