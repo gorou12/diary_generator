@@ -1,3 +1,5 @@
+import re
+
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry, IndexDirection, Topic
@@ -13,10 +15,12 @@ def generate(diary_entries: list[DiaryEntry]):
     for diary_entry in diary_entries:
         date = diary_entry.date
         topics = diary_entry.topics
+        description = _generate_description(diary_entry.topics)
         should_index = _judge_index(diary_entry.index_direction, topics)
         context = {
             "title": f"日記 - {date}",
             "should_index": should_index,
+            "description": description,
             "date": date,
             "topics": topics,  # [{'title': ..., 'content': [...], 'hashtags': [...]}, ...]
             "prev_date": dates_nav[date]["prev"],
@@ -47,5 +51,24 @@ def _judge_index(direction: IndexDirection, topics: list[Topic]) -> bool:
         case IndexDirection.NO_INDEX:
             return False
         case IndexDirection.AUTO:
-            # 現在の条件：トピックが4個以上
-            return len(topics) >= 4
+            # 現在の条件：「夢」から始まるトピックを除き、トピックが3個以上
+            count_topics = [topic for topic in topics if topic.title[0] != "夢"]
+            return len(count_topics) >= 3
+
+
+def _generate_description(topics: list[Topic]) -> str:
+    """
+    ページ説明文を生成（「夢」から始まらないトピックのトピック名＋本文の合わせて120文字）
+    """
+    description = ""
+    for topic in topics:
+        if topic.title[0] == "夢":
+            continue
+        description += topic.title + " " + "".join(topic.content) + " "
+        description = re.sub("</?[a-zA-Z0-9][a-zA-Z0-9 '\"-_.@&$%/]+>", "", description)
+        description = re.sub(
+            "https?://[a-zA-Z0-9!\?/\+\-_~=;\.,\*&@#$%\(\)'\[\]]+", "", description
+        )
+        if len(description) >= 120:
+            continue
+    return description[:120]

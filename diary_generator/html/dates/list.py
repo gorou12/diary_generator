@@ -33,6 +33,7 @@ def generate(diary_entries: list[DiaryEntry]):
         context = {
             "title": "日付一覧",
             "should_index": False,
+            "description": "ごろうの日記をまとめたサイト。",
             "dates": page_items,
             "pagination": pagination,
         }

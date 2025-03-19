@@ -31,6 +31,7 @@ def generate(diary_entries: list[DiaryEntry]):
         context = {
             "title": "ぷちダイアリー（たぶん本家）",
             "should_index": True,
+            "description": "ごろうの日記をまとめたサイト。",
             "entries": page_items,
             "pagination": pagination,
         }

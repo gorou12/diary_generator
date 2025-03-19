@@ -6,7 +6,10 @@ log = logger.get_logger()
 
 
 def generate():
-    context = {"should_index": False}
+    context = {
+        "should_index": False,
+        "description": "ごろうの日記をまとめたサイト。",
+    }
     utilities.render_template(
         "search.html", context, f"{config.FILE_NAMES.OUTPUT_BASE_DIR_NAME}search.html"
     )

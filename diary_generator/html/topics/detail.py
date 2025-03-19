@@ -32,6 +32,7 @@ def generate(diary_entries: list[DiaryEntry]):
         context = {
             "title": f"トピック: {topic}",
             "should_index": True,
+            "description": f"{topic}に関する日記。",
             "topic_name": topic,
             "entries": [
                 {
