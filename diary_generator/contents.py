@@ -1,11 +1,12 @@
 import json
 import os
 import re
+import typing
 
 from diary_generator import notion_api
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger
-from diary_generator.models import DiaryEntry, Topic
+from diary_generator.models import DiaryEntry, IndexDirection, Topic
 from diary_generator.util import diarydiff
 from diary_generator.util.img import generate_image_tag
 from diary_generator.util.linkcard import cache, linkcard
@@ -56,7 +57,10 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
             )
             for topic_data in entry_data["topics"]
         ]
-        entry = DiaryEntry(date=entry_data["date"], topics=topics)
+        index_direction = _match_index_direction(entry_data["index_direction"])
+        entry = DiaryEntry(
+            date=entry_data["date"], index_direction=index_direction, topics=topics
+        )
         entries.append(entry)
 
     # OGP用キャッシュ再書き込み
@@ -74,13 +78,18 @@ def _fetch_diary_db():
         date = properties.get("日付", {}).get("date", {}).get("start", "")
         page_id = item.get("id", "")
         is_public = properties.get("公開", {}).get("checkbox", False)
+        index_direction = (
+            properties.get("収集対象", {}).get("select", {}).get("name", "noindex")
+        )
 
         if not date or not is_public:
             continue  # 非公開ページはスキップ
 
         topics = _fetch_diary_page(page_id)
-        log.info(f"- 日付データ({date}) 取得完了")
-        all_pages.append({"date": date, "topics": topics})
+        log.debug(f"- 日付データ({date}) 取得完了")
+        all_pages.append(
+            {"date": date, "index_direction": index_direction, "topics": topics}
+        )
 
     log.info("✅ Notionデータ取得")
     return all_pages
@@ -127,3 +136,15 @@ def _fetch_diary_page(page_id: str) -> list:
         topics.append(current_topic)
 
     return topics
+
+
+def _match_index_direction(val: str) -> IndexDirection:
+    match val:
+        case "index":
+            return IndexDirection.INDEX
+        case "noindex":
+            return IndexDirection.NO_INDEX
+        case "auto":
+            return IndexDirection.AUTO
+        case _ as unreachable:
+            typing.assert_never(unreachable)

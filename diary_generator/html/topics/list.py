@@ -49,6 +49,7 @@ def generate(diary_entries: list[DiaryEntry]):
         # Jinja2 context
         context = {
             "title": "トピック一覧",
+            "should_index": False,
             "topics": page_items,
             "popular_topics": popular_topics[:10],
             "pagination": pagination,

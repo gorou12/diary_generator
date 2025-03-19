@@ -1,1 +1,1 @@
-from .diarycontents import DiaryEntry, Topic
+from .diarycontents import DiaryEntry, IndexDirection, Topic

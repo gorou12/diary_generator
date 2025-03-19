@@ -30,6 +30,7 @@ def generate(diary_entries: list[DiaryEntry]):
         # Jinja2 context
         context = {
             "title": "ぷちダイアリー（たぶん本家）",
+            "should_index": True,
             "entries": page_items,
             "pagination": pagination,
         }

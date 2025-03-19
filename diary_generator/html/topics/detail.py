@@ -32,6 +32,7 @@ def generate(diary_entries: list[DiaryEntry]):
         # Jinja2用コンテキスト準備
         context = {
             "title": f"トピック: {topic}",
+            "should_index": True,
             "topic_name": topic,
             "entries": [
                 {
