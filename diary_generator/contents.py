@@ -51,6 +51,7 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
         topics = [
             Topic(
                 title=topic_data["title"],
+                id=topic_data["id"],
                 content=topic_data["content"],
                 content_html=linkcard.create(topic_data["content"]),
                 hashtags=topic_data["hashtags"],
@@ -100,10 +101,11 @@ def _fetch_diary_page(page_id: str) -> list:
 
     blocks = data.get("results", [])
     topics = []
-    current_topic = {"title": "", "content": [], "hashtags": []}
+    current_topic = {"title": "", "id": "", "content": [], "hashtags": []}
 
     for block in blocks:
         block_type = block.get("type")
+        block_id = block.get("id")
         text_elements = (
             block[block_type].get("rich_text", []) if block_type in block else []
         )
@@ -111,11 +113,18 @@ def _fetch_diary_page(page_id: str) -> list:
             t["text"]["content"] for t in text_elements if "text" in t
         ).strip()
 
+        print(block)
         if block_type == "heading_3":  # Notionの「見出し3」がトピック名に相当
+            if not text_content:
+                continue  # 空の見出しは無視
             if current_topic["title"] and "非公開" not in current_topic["hashtags"]:
                 topics.append(current_topic)  # 既存のトピックを保存
-
-            current_topic = {"title": text_content, "content": [], "hashtags": []}
+            current_topic = {
+                "title": text_content,
+                "id": block_id,
+                "content": [],
+                "hashtags": [],
+            }
         elif block_type == "image":  # 画像
             if block["type"] == "image":
                 if block["image"]["type"] == "external":
@@ -123,7 +132,7 @@ def _fetch_diary_page(page_id: str) -> list:
                 elif block["image"]["type"] == "file":
                     url = block["image"]["file"]["url"]
                 else:
-                    continue  # 不明なタイプなら無視
+                    continue
                 id = block.get("id")
                 current_topic["content"].append(generate_image_tag(id, url))
         elif text_content.startswith("#"):

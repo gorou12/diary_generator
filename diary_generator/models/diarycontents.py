@@ -5,6 +5,7 @@ from enum import Enum, auto
 @dataclass
 class Topic:
     title: str
+    id: str
     content: list[str] = field(default_factory=list)
     hashtags: list[str] = field(default_factory=list)
     content_html: list[str] = field(default_factory=list)
