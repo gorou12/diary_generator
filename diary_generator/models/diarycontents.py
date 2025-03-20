@@ -20,5 +20,6 @@ class IndexDirection(Enum):
 @dataclass
 class DiaryEntry:
     date: str
+    date_jpn: str
     index_direction: IndexDirection
     topics: list[Topic]

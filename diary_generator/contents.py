@@ -2,6 +2,7 @@ import json
 import os
 import re
 import typing
+from datetime import datetime, timedelta, timezone
 
 from diary_generator import notion_api
 from diary_generator.config.configuration import config
@@ -57,10 +58,19 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
                 hashtags=topic_data["hashtags"],
             )
             for topic_data in entry_data["topics"]
+            if (  # ブロックを最後にいじってから5分後に収集対象とする
+                datetime.now(timezone(timedelta(hours=9)))
+                > datetime.fromisoformat(topic_data["last_edited_time"])
+                + timedelta(minutes=5)
+            )
         ]
         index_direction = _match_index_direction(entry_data["index_direction"])
+        date = entry_data["date"]
         entry = DiaryEntry(
-            date=entry_data["date"], index_direction=index_direction, topics=topics
+            date=date,
+            date_jpn=f"{date[:4]}年{date[5:7]}月{date[8:10]}日",
+            index_direction=index_direction,
+            topics=topics,
         )
         entries.append(entry)
 
@@ -101,7 +111,13 @@ def _fetch_diary_page(page_id: str) -> list:
 
     blocks = data.get("results", [])
     topics = []
-    current_topic = {"title": "", "id": "", "content": [], "hashtags": []}
+    current_topic = {
+        "title": "",
+        "last_edited_time": "",
+        "id": "",
+        "content": [],
+        "hashtags": [],
+    }
 
     for block in blocks:
         block_type = block.get("type")
@@ -112,8 +128,8 @@ def _fetch_diary_page(page_id: str) -> list:
         text_content = "".join(
             t["text"]["content"] for t in text_elements if "text" in t
         ).strip()
+        last_edited_time = block.get("last_edited_time")
 
-        print(block)
         if block_type == "heading_3":  # Notionの「見出し3」がトピック名に相当
             if not text_content:
                 continue  # 空の見出しは無視
@@ -122,6 +138,7 @@ def _fetch_diary_page(page_id: str) -> list:
             current_topic = {
                 "title": text_content,
                 "id": block_id,
+                "last_edited_time": "",
                 "content": [],
                 "hashtags": [],
             }
@@ -140,6 +157,14 @@ def _fetch_diary_page(page_id: str) -> list:
             current_topic["hashtags"].extend(hashtags)
         elif text_content:
             current_topic["content"].append(text_content.replace("\n", "<br>"))
+
+        # トピック単位で最終更新日時を保存
+        if not (current_topic.get("last_edited_time")):
+            current_topic["last_edited_time"] = last_edited_time
+        elif datetime.fromisoformat(last_edited_time) > datetime.fromisoformat(
+            current_topic.get("last_edited_time")
+        ):
+            current_topic["last_edited_time"] = last_edited_time
 
     if current_topic["title"] and "非公開" not in current_topic["hashtags"]:
         topics.append(current_topic)
