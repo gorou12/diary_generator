@@ -18,9 +18,9 @@ def generate(diary_entries: list[DiaryEntry]):
                 topic_counter[hashtag] += 1
 
     sorted_topics = topic_counter.most_common()
-    popular_topics = [
-        tpl for tpl in sorted_topics if tpl[1] >= 2
-    ]  # Counterが2以上のものだけ
+    # popular_topics = [
+    #     tpl for tpl in sorted_topics if tpl[1] >= 2
+    # ]  # Counterが2以上のものだけ
 
     pages, total_pages = utilities.paginate_list(
         sorted_topics, config.PAGINATE.TOPIC_LIST
@@ -51,7 +51,7 @@ def generate(diary_entries: list[DiaryEntry]):
             "should_index": False,
             "description": "ごろうの日記をまとめたサイト。",
             "topics": page_items,
-            "popular_topics": popular_topics[:10],
+            # "popular_topics": popular_topics[:10],
             "pagination": pagination,
         }
         utilities.render_template("topics.html", context, filename)

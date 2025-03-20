@@ -3,13 +3,6 @@
 {% block content %}
 <h2>トピック一覧</h2>
 
-<h3>人気のトピックランキング</h3>
-<ol>
-{% for topic, count in popular_topics %}
-    <li><a href="/topics/{{ topic }}.html">{{ topic }} ({{ count }}件)</a></li>
-{% endfor %}
-</ol>
-
 <h3>すべてのトピック</h3>
 <ul>
 {% for topic, count in topics %}
