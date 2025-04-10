@@ -81,26 +81,36 @@ def _parse_json_to_diary_entries(raw_data: list) -> list[DiaryEntry]:
 
 def _fetch_diary_db():
     log.info("🔄 Notion API からデータを取得中...")
-    data = notion_api.query_database(config.ENV.NOTION_DATABASE_ID)
 
     all_pages = []
-    for item in data.get("results", []):
-        properties = item.get("properties", {})
-        date = properties.get("日付", {}).get("date", {}).get("start", "")
-        page_id = item.get("id", "")
-        is_public = properties.get("公開", {}).get("checkbox", False)
-        index_direction = (
-            properties.get("収集対象", {}).get("select", {}).get("name", "noindex")
-        )
+    cursor = None
 
-        if not date or not is_public:
-            continue  # 非公開ページはスキップ
-
-        topics = _fetch_diary_page(page_id)
-        log.debug(f"- 日付データ({date}) 取得完了")
-        all_pages.append(
-            {"date": date, "index_direction": index_direction, "topics": topics}
+    while True:
+        data = notion_api.query_database(
+            config.ENV.NOTION_DATABASE_ID, start_cursor=cursor
         )
+        results = data.get("results", [])
+        for item in results:
+            properties = item.get("properties", {})
+            date = properties.get("日付", {}).get("date", {}).get("start", "")
+            page_id = item.get("id", "")
+            is_public = properties.get("公開", {}).get("checkbox", False)
+            index_direction = (
+                properties.get("収集対象", {}).get("select", {}).get("name", "noindex")
+            )
+
+            if not date or not is_public:
+                continue  # 非公開ページはスキップ
+
+            topics = _fetch_diary_page(page_id)
+            log.debug(f"- 日付データ({date}) 取得完了")
+            all_pages.append(
+                {"date": date, "index_direction": index_direction, "topics": topics}
+            )
+        if not data.get("has_more"):
+            break
+
+        cursor = data.get("next_cursor")
 
     log.info("✅ Notionデータ取得")
     return all_pages
