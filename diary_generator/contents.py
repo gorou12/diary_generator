@@ -95,12 +95,12 @@ def _fetch_diary_db():
             date = properties.get("日付", {}).get("date", {}).get("start", "")
             page_id = item.get("id", "")
             is_public = properties.get("公開", {}).get("checkbox", False)
-            index_direction = (
-                properties.get("収集対象", {}).get("select", {}).get("name", "noindex")
-            )
+            can_index = properties.get("収集対象", {}).get("select", {})
 
-            if not date or not is_public:
+            if not date or not is_public or not can_index:
                 continue  # 非公開ページはスキップ
+
+            index_direction = can_index.get("name", "noindex")
 
             topics = _fetch_diary_page(page_id)
             log.debug(f"- 日付データ({date}) 取得完了")
