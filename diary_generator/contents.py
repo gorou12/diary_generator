@@ -117,9 +117,19 @@ def _fetch_diary_db():
 
 
 def _fetch_diary_page(page_id: str) -> list:
-    data = notion_api.get_block_children(page_id)
+    all_blocks = []
+    cursor = None
 
-    blocks = data.get("results", [])
+    # ページネーションでブロックを取得
+    while True:
+        data = notion_api.get_block_children(page_id, start_cursor=cursor)
+        results = data.get("results", [])
+        all_blocks.extend(results)
+
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
     topics = []
     current_topic = {
         "title": "",
@@ -129,7 +139,7 @@ def _fetch_diary_page(page_id: str) -> list:
         "hashtags": [],
     }
 
-    for block in blocks:
+    for block in all_blocks:
         block_type = block.get("type")
         block_id = block.get("id")
         text_elements = (
