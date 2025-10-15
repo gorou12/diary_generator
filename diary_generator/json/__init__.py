@@ -1,3 +1,3 @@
-from . import search
+from . import calendar, search
 
-__all__ = ["search"]
+__all__ = ["search", "calendar"]

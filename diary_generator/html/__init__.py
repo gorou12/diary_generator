@@ -1,4 +1,4 @@
-from . import dates, index, search, sidebar, topics
+from . import dates, index, search, topics
 
-__all__ = ["dates", "index", "search", "sidebar", "topics"]
+__all__ = ["dates", "index", "search", "topics"]
 sidebar_content = {}

@@ -29,11 +29,15 @@ def generate(diary_entries: list[DiaryEntry]):
             grouped_by_date[date].append(entry)
 
         # Jinja2用コンテキスト準備
+        latest_date = (
+            sorted(grouped_by_date.keys(), reverse=True)[0] if grouped_by_date else None
+        )
         context = {
             "title": f"トピック: {topic}",
             "should_index": True,
             "description": f"{topic}に関する日記。",
             "topic_name": topic,
+            "initial_month": latest_date[:7] if latest_date else None,
             "entries": [
                 {
                     "date": f"{date[:4]}年{date[5:7]}月{date[8:10]}日",

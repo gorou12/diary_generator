@@ -8,8 +8,6 @@ def generate_all():
     filemaintenance.reflesh_files()
     filemaintenance.copy_static_files()
 
-    html.sidebar.set_content(diary_entries)
-
     html.index.generate(diary_entries)
     html.dates.list.generate(diary_entries)
     html.dates.detail.generate(diary_entries)
@@ -18,3 +16,4 @@ def generate_all():
     html.search.generate()
 
     json.search.generate(diary_entries)
+    json.calendar.generate(diary_entries)

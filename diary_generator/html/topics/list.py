@@ -50,6 +50,7 @@ def generate(diary_entries: list[DiaryEntry]):
             "title": "トピック一覧",
             "should_index": False,
             "description": "ごろうの日記をまとめたサイト。",
+            "initial_month": None,
             "topics": page_items,
             # "popular_topics": popular_topics[:10],
             "pagination": pagination,

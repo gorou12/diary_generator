@@ -289,6 +289,31 @@ nav li a:hover, nav button:hover {
     margin: 20px 0;
 }
 
+.calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.calendar-nav button {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.calendar-nav button:hover:not(:disabled) {
+    background: #005fa3;
+}
+
+.calendar-nav button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
 .calendar table {
     width: 100%;
     border-collapse: collapse;
@@ -308,6 +333,20 @@ nav li a:hover, nav button:hover {
     color: white;
     text-decoration: none;
     border-radius: 4px;
+}
+
+/* トピック数に応じた濃淡（リンク背景色） */
+.calendar td.density-1 a { background: #cfe5ff; color: #153a6b; }
+.calendar td.density-2 a { background: #7fb5ff; color: #0f2b4d; }
+.calendar td.density-3 a { background: #2f7be5; color: #ffffff; }
+
+/* 日付ページで選択日の非リンク＋枠線強調 */
+.calendar td.selected-day {
+    border: 2px solid #ff9800;
+}
+.calendar td.selected-day span {
+    display: block;
+    padding: 5px;
 }
 
 .calendar a:hover {
@@ -388,6 +427,21 @@ html.dark nav li a:hover, html.dark nav button:hover {
 html.dark .calendar a {
     background: #444;
 }
+
+html.dark .calendar-nav button {
+    background: #444;
+}
+html.dark .calendar-nav button:hover:not(:disabled) {
+    background: #666;
+}
+
+/* ダークモード時の濃淡 */
+/* ダークモードは件数が多いほど明るくする（視認性重視） */
+html.dark .calendar td.density-1 a { background: #16243a; color: #cfe5ff; }
+html.dark .calendar td.density-2 a { background: #2a3b55; color: #cfe5ff; }
+html.dark .calendar td.density-3 a { background: #3f5f99; color: #eaf3ff; }
+
+html.dark .calendar td.selected-day { border-color: #ffa726; }
 
 html.dark .calendar a:hover {
     background: #666;

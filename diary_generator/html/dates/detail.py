@@ -22,6 +22,7 @@ def generate(diary_entries: list[DiaryEntry]):
             "should_index": should_index,
             "description": description,
             "date": date,
+            "initial_month": date[:7],
             "topics": topics,  # [{'title': ..., 'content': [...], 'hashtags': [...]}, ...]
             "prev_date": dates_nav[date]["prev"],
             "next_date": dates_nav[date]["next"],

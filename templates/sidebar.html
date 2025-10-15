@@ -7,9 +7,18 @@
     <a href="https://bsky.app/profile/pokete.com" target="_blank">Bluesky</a> 
     <a href="https://mstdn.pokete.com/@gorou12" target="_blank">Mastodon</a>
 </p>
-{% if sidebar_content.calendar %}
+{% if sidebar_content.calendar_data or true %}
 <h3>カレンダー</h3>
 <div class="calendar">
-    {{ sidebar_content.calendar if sidebar_content.calendar else "" | safe }}
+    <div class="calendar-nav">
+        <button id="prev-month">⬅️</button>
+        <span id="current-month-label"></span>
+        <button id="next-month">➡️</button>
+    </div>
+    <div id="calendar-content"></div>
 </div>
+<script>
+  window.initialMonth = "{{ initial_month if initial_month else '' }}";
+  window.currentPageDate = "{{ date if date else '' }}"; // YYYY-MM-DD (dateページのみ)
+</script>
 {% endif %}

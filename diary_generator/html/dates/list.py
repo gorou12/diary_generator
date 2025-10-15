@@ -34,6 +34,7 @@ def generate(diary_entries: list[DiaryEntry]):
             "title": "日付一覧",
             "should_index": False,
             "description": "ごろうの日記をまとめたサイト。",
+            "initial_month": None,
             "dates": page_items,
             "pagination": pagination,
         }

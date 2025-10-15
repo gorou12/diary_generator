@@ -70,12 +70,17 @@ def generate(diary_entries: list[DiaryEntry]):
             pagination += f'<a href="{next_link}">次へ »</a>'
 
         # Jinja2 context
+        # 初期表示月はそのページの最初のエントリの年月（なければNone）
+        first_entry_date = page_items[0].date if page_items else None
+        initial_month = first_entry_date[:7] if first_entry_date else None
+
         context = {
             "title": "ぷちダイアリー（たぶん本家）",
             "should_index": True,
             "description": "ごろうの日記をまとめたサイト。",
             "entries": page_items,
             "pagination": pagination,
+            "initial_month": initial_month,
         }
 
         utilities.render_template("index.html", context, filename)
