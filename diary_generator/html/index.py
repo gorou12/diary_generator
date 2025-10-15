@@ -44,9 +44,12 @@ def _paginate_by_topics(
 def generate(diary_entries: list[DiaryEntry]):
     output_dir = config.FILE_NAMES.OUTPUT_BASE_DIR_NAME
 
+    # 日付を新しい順に並び替え
+    sorted_entries = sorted(diary_entries, key=lambda x: x.date, reverse=True)
+
     # トピック数ベースでページ分割
     pages, total_pages = _paginate_by_topics(
-        diary_entries, config.PAGINATE.INDEX_TOPICS
+        sorted_entries, config.PAGINATE.INDEX_TOPICS
     )
 
     for idx, page_items in enumerate(pages):
