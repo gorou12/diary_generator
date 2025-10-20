@@ -20,6 +20,9 @@ class FileName:
     OUTPUT_TOPICS_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}topics/"
     OUTPUT_STATIC_FILES_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}src/"
     OUTPUT_IMAGE_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}images/"
+    OUTPUT_THUMBNAILS_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}thumbnails/"
+    OUTPUT_THUMBNAILS_SMALL_DIR_NAME: str = f"{OUTPUT_THUMBNAILS_DIR_NAME}small/"
+    OUTPUT_THUMBNAILS_MEDIUM_DIR_NAME: str = f"{OUTPUT_THUMBNAILS_DIR_NAME}medium/"
     OUTPUT_JSON_DIR_NAME: str = f"{OUTPUT_BASE_DIR_NAME}json/"
 
     def __post_init__(self):
@@ -32,4 +35,7 @@ class FileName:
         os.makedirs(self.OUTPUT_TOPICS_DIR_NAME, exist_ok=True)
         os.makedirs(self.OUTPUT_STATIC_FILES_DIR_NAME, exist_ok=True)
         os.makedirs(self.OUTPUT_IMAGE_DIR_NAME, exist_ok=True)
+        os.makedirs(self.OUTPUT_THUMBNAILS_DIR_NAME, exist_ok=True)
+        os.makedirs(self.OUTPUT_THUMBNAILS_SMALL_DIR_NAME, exist_ok=True)
+        os.makedirs(self.OUTPUT_THUMBNAILS_MEDIUM_DIR_NAME, exist_ok=True)
         os.makedirs(self.OUTPUT_JSON_DIR_NAME, exist_ok=True)
