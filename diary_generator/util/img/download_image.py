@@ -4,7 +4,10 @@ import re
 import requests
 
 from diary_generator.logger import logger
-from diary_generator.util.img.thumbnail import generate_all_thumbnails
+from diary_generator.util.img.thumbnail import (
+    generate_all_thumbnails,
+    generate_thumbnails_if_missing,
+)
 
 log = logger.get_logger()
 
@@ -33,8 +36,8 @@ def download_image(id: str, url: str, save_dir="output/images") -> str:
         except Exception as _:
             log.warning("⚠️ ダウンロード例外", exc_info=True)
     else:
-        # 既存画像の場合もサムネイルが存在するかチェックして生成
-        generate_all_thumbnails(save_path, id)
+        # 既存画像の場合、サムネイルが存在しない場合のみ生成
+        generate_thumbnails_if_missing(save_path, id)
 
     # HTML用のパスを返す
     return f"/images/{filename}"

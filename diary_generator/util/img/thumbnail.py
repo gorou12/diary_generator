@@ -45,7 +45,7 @@ def generate_all_thumbnails(
     original_path: str, image_id: str, base_dir: str = "output"
 ) -> dict:
     """
-    画像から2サイズのサムネイルを生成する
+    画像から3サイズのサムネイルを生成する
 
     Args:
         original_path: 元画像のパス
@@ -94,9 +94,45 @@ def get_thumbnail_path(
         return f"/images/{image_id}"
 
 
+def generate_thumbnails_if_missing(
+    original_path: str, image_id: str, base_dir: str = "output"
+) -> dict:
+    """
+    サムネイルが存在しない場合のみ生成する
+
+    Args:
+        original_path: 元画像のパス
+        image_id: 画像ID（ファイル名から拡張子を除いた部分）
+        base_dir: ベースディレクトリ
+
+    Returns:
+        dict: 生成されたサムネイルのパス辞書
+    """
+    thumbnails = {}
+
+    # サムネイルサイズ設定
+    sizes = {"small": 380, "medium": 520, "large": 720}
+
+    for size_name, max_width in sizes.items():
+        output_path = os.path.join(
+            base_dir, "thumbnails", size_name, f"{image_id}.webp"
+        )
+
+        # サムネイルが存在しない場合のみ生成
+        if not os.path.exists(output_path):
+            if generate_thumbnail(original_path, output_path, max_width):
+                thumbnails[size_name] = f"/thumbnails/{size_name}/{image_id}.webp"
+        else:
+            # 既存のサムネイルのパスを返す
+            thumbnails[size_name] = f"/thumbnails/{size_name}/{image_id}.webp"
+
+    return thumbnails
+
+
 def generate_thumbnails_for_existing_images(images_dir: str = "output/images") -> int:
     """
-    既存画像のサムネイルを一括生成する
+    既存画像のサムネイルを一括再生成する（手動実行用）
+    画質変更やサムネイルサイズ変更時の再生成用
 
     Args:
         images_dir: 画像ディレクトリのパス
@@ -118,33 +154,14 @@ def generate_thumbnails_for_existing_images(images_dir: str = "output/images") -
         image_id = os.path.splitext(filename)[0]
         original_path = os.path.join(images_dir, filename)
 
-        # サムネイルが既に存在するかチェック
-        small_thumbnail = os.path.join(
-            "output", "thumbnails", "small", f"{image_id}.webp"
-        )
-        medium_thumbnail = os.path.join(
-            "output", "thumbnails", "medium", f"{image_id}.webp"
-        )
-        large_thumbnail = os.path.join(
-            "output", "thumbnails", "large", f"{image_id}.webp"
-        )
-
-        if (
-            os.path.exists(small_thumbnail)
-            and os.path.exists(medium_thumbnail)
-            and os.path.exists(large_thumbnail)
-        ):
-            log.info(f"⏭️ サムネイル既存: {filename}")
-            continue
-
-        # サムネイル生成
+        # サムネイルを強制的に再生成（既存でも上書き）
         thumbnails = generate_all_thumbnails(original_path, image_id)
 
         if thumbnails:
             processed_count += 1
-            log.info(f"✅ 処理完了: {filename} -> {len(thumbnails)}個のサムネイル")
+            log.info(f"✅ 再生成完了: {filename} -> {len(thumbnails)}個のサムネイル")
         else:
-            log.warning(f"⚠️ 処理失敗: {filename}")
+            log.warning(f"⚠️ 再生成失敗: {filename}")
 
-    log.info(f"📊 一括サムネイル生成完了: {processed_count}枚処理")
+    log.info(f"📊 一括サムネイル再生成完了: {processed_count}枚処理")
     return processed_count
