@@ -2,13 +2,14 @@ import os
 
 from PIL import Image
 
+from diary_generator.config.configuration import config
 from diary_generator.logger import logger
 
 log = logger.get_logger()
 
 
 def generate_thumbnail(
-    original_path: str, output_path: str, max_width: int, quality: int = 85
+    original_path: str, output_path: str, max_width: int, quality: int = None
 ) -> bool:
     """
     指定された画像からサムネイルを生成する
@@ -17,7 +18,7 @@ def generate_thumbnail(
         original_path: 元画像のパス
         output_path: サムネイルの出力パス
         max_width: 最大幅（ピクセル）
-        quality: WebP品質（1-100）
+        quality: WebP品質（1-100、Noneの場合は設定値を使用）
 
     Returns:
         bool: 生成成功時True
@@ -25,6 +26,10 @@ def generate_thumbnail(
     try:
         # 出力ディレクトリを作成
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        # 品質設定（Noneの場合は設定値を使用）
+        if quality is None:
+            quality = config.THUMBNAIL.QUALITY
 
         with Image.open(original_path) as img:
             # アスペクト比を保持してリサイズ
@@ -57,8 +62,8 @@ def generate_all_thumbnails(
     """
     thumbnails = {}
 
-    # サムネイルサイズ設定
-    sizes = {"small": 380, "medium": 520, "large": 720}
+    # 設定からサムネイルサイズを取得
+    sizes = config.THUMBNAIL.sizes
 
     for size_name, max_width in sizes.items():
         output_path = os.path.join(
@@ -110,8 +115,8 @@ def generate_thumbnails_if_missing(
     """
     thumbnails = {}
 
-    # サムネイルサイズ設定
-    sizes = {"small": 380, "medium": 520, "large": 720}
+    # 設定からサムネイルサイズを取得
+    sizes = config.THUMBNAIL.sizes
 
     for size_name, max_width in sizes.items():
         output_path = os.path.join(
