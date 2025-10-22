@@ -58,7 +58,7 @@ def generate_all_thumbnails(
     thumbnails = {}
 
     # サムネイルサイズ設定
-    sizes = {"small": 380, "medium": 520}
+    sizes = {"small": 380, "medium": 520, "large": 720}
 
     for size_name, max_width in sizes.items():
         output_path = os.path.join(
@@ -79,7 +79,7 @@ def get_thumbnail_path(
 
     Args:
         image_id: 画像ID
-        size: サムネイルサイズ（'small' または 'medium'）
+        size: サムネイルサイズ（'small' または 'medium' または 'large'）
         base_dir: ベースディレクトリ
 
     Returns:
@@ -125,8 +125,15 @@ def generate_thumbnails_for_existing_images(images_dir: str = "output/images") -
         medium_thumbnail = os.path.join(
             "output", "thumbnails", "medium", f"{image_id}.webp"
         )
+        large_thumbnail = os.path.join(
+            "output", "thumbnails", "large", f"{image_id}.webp"
+        )
 
-        if os.path.exists(small_thumbnail) and os.path.exists(medium_thumbnail):
+        if (
+            os.path.exists(small_thumbnail)
+            and os.path.exists(medium_thumbnail)
+            and os.path.exists(large_thumbnail)
+        ):
             log.info(f"⏭️ サムネイル既存: {filename}")
             continue
 
