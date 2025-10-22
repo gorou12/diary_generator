@@ -13,7 +13,7 @@ def generate_image_tag(id: str, url: str, alt_text="") -> str:
     return f'''<a href="{local_path}" target="_blank">
   <picture>
     <source media="(max-width: 400px)" srcset="{small_thumbnail}" type="image/webp">
-    <source media="(min-width: 401px)" srcset="{medium_thumbnail}" type="image/webp">
+    <source media="(max-width: 720px)" srcset="{medium_thumbnail}" type="image/webp">
     <source media="(min-width: 721px)" srcset="{large_thumbnail}" type="image/webp">
     <img class="embedimg" src="{large_thumbnail}" alt="{alt_text}" loading="lazy">
   </picture>
