@@ -74,7 +74,7 @@ h4 {
 }
 
 .content img {
-    max-width: 520px;
+    max-width: 100%;
     height: auto;
     object-fit: cover;
     border: solid 1px #777777;
@@ -102,8 +102,7 @@ h4 {
 }
 
 .link-card img {
-    width: 400px;
-    max-width: auto;
+    max-width: 100%;
     height: auto;
     object-fit: cover;
 }
