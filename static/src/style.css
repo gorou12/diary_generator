@@ -74,8 +74,7 @@ h4 {
 }
 
 .content img {
-    width: 520px;
-    max-width: 100%;
+    max-width: 520px;
     height: auto;
     object-fit: cover;
     border: solid 1px #777777;
