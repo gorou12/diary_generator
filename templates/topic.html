@@ -9,11 +9,11 @@
     
     {% for entry in topic_entry.entries %}
     <div class="content-of-day">
-        <h4>{{ entry.title }} <a href="/topics/{{ entry.title }}.html" class="icon-link">🔍</a></h4>
+        <h4>{{ entry.title }} <a href="{{ topic_url(entry.title) }}" class="icon-link">🔍</a></h4>
         <div class="hashtags">
             <ul>
                 {% for tag in entry.hashtags %}
-                <li><a href="/topics/{{ tag }}.html" class="tag"><i class="fas fa-tags"></i> {{ tag }}</a></li>
+                <li><a href="{{ topic_url(tag) }}" class="tag"><i class="fas fa-tags"></i> {{ tag }}</a></li>
                 {% endfor %}
             </ul>
         </div>
@@ -26,5 +26,11 @@
     {% endfor %}
 </div>
 {% endfor %}
+
+{% if pagination %}
+<div class="pagination">
+    {{ pagination | safe }}
+</div>
+{% endif %}
 
 {% endblock %}

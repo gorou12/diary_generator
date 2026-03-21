@@ -6,7 +6,7 @@
 <h3>すべてのトピック</h3>
 <ul>
 {% for topic, count in topics %}
-    <li><a href="/topics/{{ topic }}.html">{{ topic }} ({{ count }}件)</a></li>
+    <li><a href="{{ topic_url(topic) }}">{{ topic }} ({{ count }}件)</a></li>
 {% endfor %}
 </ul>
 

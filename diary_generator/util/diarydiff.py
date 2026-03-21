@@ -82,9 +82,9 @@ def diff_diary_json():
             o_contents = old_contents[n_date][n_title]
             diff = list(difflib.unified_diff(o_contents, n_contents, lineterm=""))
             if diff:
+                diff_text = "\n".join(diff)
                 diff_results.append(
-                    f"changed: {n_date} -> {n_title}\n```diff\n{'\n'.join(diff)}\n```"
+                    f"changed: {n_date} -> {n_title}\n```diff\n{diff_text}\n```"
                 )
-
     if diff_results:
         notify_log.info("\n" + "\n".join(diff_results))

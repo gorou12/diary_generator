@@ -5,11 +5,11 @@
 
 {% for topic in topics %}
 <div class="topic">
-    <h3>{{ topic.title }} <a href="/topics/{{ topic.title }}.html" class="icon-link">🔍</a> </h3>
+    <h3>{{ topic.title }} <a href="{{ topic_url(topic.title) }}" class="icon-link">🔍</a> </h3>
     <div class="hashtags">
         <ul>
             {% for tag in topic.hashtags %}
-            <li><a href="/topics/{{ tag }}.html" class="tag"><i class="fas fa-tags"></i> {{ tag }}</a></li>
+            <li><a href="{{ topic_url(tag) }}" class="tag"><i class="fas fa-tags"></i> {{ tag }}</a></li>
             {% endfor %}
         </ul>
     </div>
