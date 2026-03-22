@@ -6,9 +6,15 @@ from diary_generator import config, generator
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use-cache", action="store_true", help="キャッシュを使用する")
+    parser.add_argument(
+        "--use-topic-slug-cache",
+        action="store_true",
+        help="トピックスラッグキャッシュを使用する",
+    )
     args = parser.parse_args()
 
     config.configuration.set_use_cache(args.use_cache)
+    config.configuration.set_use_topic_slug_cache(args.use_topic_slug_cache)
 
     generator.generate_all()
 
