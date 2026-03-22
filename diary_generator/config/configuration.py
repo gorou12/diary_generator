@@ -44,3 +44,7 @@ config = Config()
 
 def set_use_cache(val: bool):
     config.set_use_cache(val)
+
+
+def set_use_topic_slug_cache(val: bool):
+    config.set_use_topic_slug_cache(val)
