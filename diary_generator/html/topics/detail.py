@@ -97,6 +97,9 @@ def _render_canonical_pages(
     topics_root: str,
     resolver: TopicSlugResolver,
 ) -> str:
+    """
+    トピック詳細ページ（正本）を生成する。
+    """
     canonical_slug = resolver.slug(topic_name)
     canonical_dir = os.path.join(topics_root, canonical_slug)
 
@@ -133,6 +136,9 @@ def _render_redirects(
     resolver: TopicSlugResolver,
     canonical_slug: str,
 ):
+    """
+    トピック詳細ページ（リダイレクト用）を生成する。
+    """
     redirect_context = {"dest_url": resolver.url(topic_name, 1)}
 
     # 旧URL（topics/<topic_name>.html）から canonical に誘導
@@ -146,6 +152,11 @@ def _render_redirects(
         auto_index = os.path.join(topics_root, auto_slug, "index.html")
         os.makedirs(os.path.dirname(auto_index), exist_ok=True)
         utilities.render_template("redirect.html", redirect_context, auto_index)
+
+    # /topics/slug/page/1/index.html から canonical に誘導
+    auto_page = os.path.join(topics_root, canonical_slug, "page", "1", "index.html")
+    os.makedirs(os.path.dirname(auto_page), exist_ok=True)
+    utilities.render_template("redirect.html", redirect_context, auto_page)
 
 
 def generate(diary_entries: list[DiaryEntry], resolver: TopicSlugResolver):
