@@ -25,6 +25,7 @@ class ThumbnailConfig:
 @dataclass(frozen=True)
 class Config:
     USE_CACHE: bool = False
+    USE_TOPIC_SLUG_CACHE: bool = False
     MAX_OGP_LEN: int = 90
     FILE_NAMES: filenames.FileName = filenames.FileName()
     PAGINATE: paginate.Paginte = paginate.Paginte()
@@ -34,9 +35,16 @@ class Config:
     def set_use_cache(self, val: bool):
         object.__setattr__(self, "USE_CACHE", val)
 
+    def set_use_topic_slug_cache(self, val: bool):
+        object.__setattr__(self, "USE_TOPIC_SLUG_CACHE", val)
+
 
 config = Config()
 
 
 def set_use_cache(val: bool):
     config.set_use_cache(val)
+
+
+def set_use_topic_slug_cache(val: bool):
+    config.set_use_topic_slug_cache(val)

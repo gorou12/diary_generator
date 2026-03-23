@@ -11,8 +11,10 @@ class Env:
     NOTION_API_KEY: str = field(init=False)
     NOTION_DATABASE_ID: str = field(init=False)
     NOTICE_WEBHOOK_URL: str = field(init=False)
+    SLUG_DATABASE_ID: str = field(init=False)
 
     def __post_init__(self):
         object.__setattr__(self, "NOTION_API_KEY", os.getenv("NOTION_API_KEY"))
         object.__setattr__(self, "NOTION_DATABASE_ID", os.getenv("DATABASE_ID"))
         object.__setattr__(self, "NOTICE_WEBHOOK_URL", os.getenv("NOTICE_WEBHOOK_URL"))
+        object.__setattr__(self, "SLUG_DATABASE_ID", os.getenv("SLUG_DATABASE_ID"))

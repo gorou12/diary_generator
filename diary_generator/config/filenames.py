@@ -11,6 +11,8 @@ class FileName:
     CACHE_OGP_PATH: str = f"{CACHE_DIR_NAME}ogp.json"
     CACHE_TWITTER_PATH: str = f"{CACHE_DIR_NAME}twitter.json"
 
+    CACHE_TOPIC_SLUGS_PATH: str = f"{CACHE_DIR_NAME}topic_slugs.json"
+
     STATIC_FILES_DIR_NAME: str = "static/"
 
     LOG_DIR_NAME: str = "logs/"
