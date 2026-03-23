@@ -9,7 +9,7 @@ def generate_all():
 
     # スラッグデータの取得
     resolver = TopicSlugResolver()
-    utilities.set_topic_url_fn(resolver.url)
+    utilities.set_topic_url_fn(resolver.url_for_title)
 
     filemaintenance.reflesh_files()
     filemaintenance.copy_static_files()

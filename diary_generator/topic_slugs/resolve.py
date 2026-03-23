@@ -108,8 +108,15 @@ class TopicSlugResolver:
         norm = normalize_topic_key(title)
         return self._manual.get(norm) or auto_slug_from_title(title)
 
-    def url(self, title: str, page: int = 1) -> str:
-        s = self.slug(title)
+    def url_for_slug(self, slug: str, page: int = 1) -> str:
+        s = slug.strip().strip("/")
         if page <= 1:
             return f"/topics/{quote(s)}/"
         return f"/topics/{quote(s)}/page/{page}/"
+
+    def url_for_title(self, title: str, page: int = 1) -> str:
+        return self.url_for_slug(self.slug(title), page)
+
+    def url(self, title: str, page: int = 1) -> str:
+        # Backward-compatible alias for title-based URL resolution.
+        return self.url_for_title(title, page)

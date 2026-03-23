@@ -81,11 +81,11 @@ def _build_pagination_html(
 
     pagination = ""
     if page_num > 1:
-        prev_url = resolver.url(url_key, page_num - 1)
+        prev_url = resolver.url_for_slug(url_key, page_num - 1)
         pagination += f'<a href="{prev_url}">« 前へ</a> '
     pagination += f"<span>{page_num}/{total_pages}</span>"
     if page_num < total_pages:
-        next_url = resolver.url(url_key, page_num + 1)
+        next_url = resolver.url_for_slug(url_key, page_num + 1)
         pagination += f' <a href="{next_url}">次へ »</a>'
     return pagination
 
@@ -127,7 +127,7 @@ def _render_canonical_pages(
             out_path = os.path.join(canonical_dir, "index.html")
         else:
             out_path = os.path.join(canonical_dir, "page", str(page_num), "index.html")
-        page_url = resolver.url(canonical_slug, page_num)
+        page_url = resolver.url_for_slug(canonical_slug, page_num)
 
         context = _build_topic_context(
             topic_name=display_name,
@@ -151,7 +151,7 @@ def _render_page1_redirect(
     canonical_slug: str,
 ) -> None:
     """同一 slug に対して 1 回だけ: /topics/slug/page/1/ を canonical へ誘導。"""
-    dest_url = resolver.url(canonical_slug, 1)
+    dest_url = resolver.url_for_slug(canonical_slug, 1)
     redirect_context = {"dest_url": dest_url}
     auto_page = os.path.join(topics_root, canonical_slug, "page", "1", "index.html")
     os.makedirs(os.path.dirname(auto_page), exist_ok=True)
@@ -167,7 +167,7 @@ def _render_legacy_and_auto_redirects_for_label(
     日記に現れる各ラベルごとに: 旧 topics/<ラベル>.html と旧自動スラッグ URL を canonical へ誘導。
     """
     canonical_slug = resolver.slug(raw_label)
-    dest_url = resolver.url(canonical_slug, 1)
+    dest_url = resolver.url_for_slug(canonical_slug, 1)
     redirect_context = {"dest_url": dest_url}
 
     legacy_path = os.path.join(topics_root, f"{raw_label}.html")
