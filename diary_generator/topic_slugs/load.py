@@ -10,7 +10,11 @@ from diary_generator.logger import logger
 from diary_generator.models import TopicSlugEntry
 from diary_generator.topic_slugs.entries import page_to_entry
 from diary_generator.topic_slugs.notion_fetch import fetch_all_slug_database_pages
-from diary_generator.topic_slugs.resolve import TopicSlugResolver, build_lookup
+from diary_generator.topic_slugs.resolve import (
+    TopicSlugResolver,
+    build_lookup,
+    build_slug_to_display_name,
+)
 
 log = logger.get_logger()
 
@@ -75,12 +79,18 @@ def load_topic_slug_rules() -> list[dict]:
     return rules
 
 
-def load_manual_lookup() -> dict[str, str]:
-    """TopicSlugResolver 用の正規化キー → slug 辞書。"""
+def load_topic_slug_lookups() -> tuple[dict[str, str], dict[str, str]]:
+    """正規化キー → slug と、slug → 表示用正式名。"""
     rules = load_topic_slug_rules()
     entries = [TopicSlugEntry.from_dict(r) for r in rules]
-    return build_lookup(entries)
+    return build_lookup(entries), build_slug_to_display_name(entries)
+
+
+def load_manual_lookup() -> dict[str, str]:
+    """TopicSlugResolver 用の正規化キー → slug 辞書。"""
+    return load_topic_slug_lookups()[0]
 
 
 def create_topic_slug_resolver() -> TopicSlugResolver:
-    return TopicSlugResolver(load_manual_lookup())
+    manual, slug_to_display = load_topic_slug_lookups()
+    return TopicSlugResolver(manual, slug_to_display)

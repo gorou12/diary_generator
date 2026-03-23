@@ -47,6 +47,23 @@ def build_lookup(entries: list[TopicSlugEntry]) -> dict[str, str]:
     return out
 
 
+def build_slug_to_display_name(entries: list[TopicSlugEntry]) -> dict[str, str]:
+    """
+    canonical slug（URL 用）→ Notion の正式名（名前）。
+    同一 slug が複数レコードにあれば先に登場したエントリが優先（先勝ち）。
+    """
+    out: dict[str, str] = {}
+    for entry in entries:
+        slug = entry.slug.strip().strip("/")
+        if not slug:
+            continue
+        name = entry.name.strip()
+        if not name or slug in out:
+            continue
+        out[slug] = name
+    return out
+
+
 def auto_slug_from_title(title: str) -> str:
     """手動未登録トピック用。正規化キーを SHA1 に通した短い自動スラッグ。"""
     norm = normalize_topic_key(title)
@@ -60,8 +77,17 @@ class TopicSlugResolver:
     データ取得は行わず、渡された lookup のみを使う（load 層で構築）。
     """
 
-    def __init__(self, manual: dict[str, str]):
+    def __init__(
+        self,
+        manual: dict[str, str],
+        slug_to_display: dict[str, str] | None = None,
+    ):
         self._manual = manual
+        self._slug_to_display = slug_to_display or {}
+
+    def display_name_for_slug(self, slug: str) -> str:
+        """Notion に正式名があればそれを返す。無ければ slug をそのまま返す（自動 t-... 用）。"""
+        return self._slug_to_display.get(slug, slug)
 
     def auto_slug(self, title: str) -> str:
         return auto_slug_from_title(title)

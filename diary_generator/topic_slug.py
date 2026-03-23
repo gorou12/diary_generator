@@ -6,7 +6,7 @@
 """
 
 from diary_generator.models import TopicSlugEntry
-from diary_generator.topic_slugs.load import load_manual_lookup
+from diary_generator.topic_slugs.load import load_topic_slug_lookups
 from diary_generator.topic_slugs.normalize import normalize_topic_key
 from diary_generator.topic_slugs.resolve import TopicSlugResolver as _TopicSlugResolver
 
@@ -18,7 +18,8 @@ class TopicSlugResolver(_TopicSlugResolver):
     """
 
     def __init__(self):
-        super().__init__(load_manual_lookup())
+        manual, slug_to_display = load_topic_slug_lookups()
+        super().__init__(manual, slug_to_display)
 
 
 __all__ = [
