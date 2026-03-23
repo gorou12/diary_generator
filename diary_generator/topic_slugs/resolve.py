@@ -12,16 +12,22 @@ from diary_generator.topic_slugs.normalize import normalize_topic_key
 log = logger.get_logger()
 
 
+class TopicSlugConflictError(ValueError):
+    """トピックスラッグ解決キーの衝突（循環参照相当）。"""
+
+
 def build_lookup(entries: list[TopicSlugEntry]) -> dict[str, str]:
     """
     正規化した名前・各エイリアス・スラッグ文字列をキーに canonical slug へマップする。
     同一キーに別 slug が割り当てられる場合は警告（後から処理したエントリが優先、後勝ち）。
     """
     out: dict[str, str] = {}
+    key_source: dict[str, tuple[str, str]] = {}
     for entry in entries:
         slug = entry.slug.strip().strip("/")
         if not slug:
             continue
+        name = entry.name.strip()
         keys: list[str] = []
         nk = normalize_topic_key(entry.name)
         if nk:
@@ -37,13 +43,19 @@ def build_lookup(entries: list[TopicSlugEntry]) -> dict[str, str]:
         for k in keys:
             prev = out.get(k)
             if prev is not None and prev != slug:
-                log.warning(
-                    "トピックスラッグの解決キーが衝突しました（後勝ち）: key=%r was=%r now=%r",
-                    k,
-                    prev,
-                    slug,
+                prev_name, prev_slug = key_source.get(k, ("", prev))
+                msg = "❕スラッグ設定が重複しています！ %s/%s - %s/%s"
+                raise TopicSlugConflictError(
+                    msg
+                    % (
+                        prev_name or k,
+                        prev_slug,
+                        name or k,
+                        slug,
+                    )
                 )
             out[k] = slug
+            key_source[k] = (name, slug)
     return out
 
 

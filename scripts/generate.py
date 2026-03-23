@@ -1,6 +1,9 @@
 import argparse
 
 from diary_generator import config, generator
+from diary_generator.logger import logger
+
+log = logger.get_logger()
 
 
 def main():
@@ -16,7 +19,11 @@ def main():
     config.configuration.set_use_cache(args.use_cache)
     config.configuration.set_use_topic_slug_cache(args.use_topic_slug_cache)
 
-    generator.generate_all()
+    try:
+        generator.generate_all()
+    except Exception as e:
+        log.error("生成処理を中断しました: %s", e)
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":

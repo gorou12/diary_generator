@@ -7,7 +7,7 @@ def generate_all():
     # 日記データの取得
     diary_entries = contents.get()
 
-    # トピックURL解決（手動スラッグがあれば優先、なければ自動）
+    # スラッグデータの取得
     resolver = TopicSlugResolver()
     utilities.set_topic_url_fn(resolver.url)
 
