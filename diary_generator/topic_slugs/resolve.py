@@ -97,9 +97,9 @@ class TopicSlugResolver:
         self._manual = manual
         self._slug_to_display = slug_to_display or {}
 
-    def display_name_for_slug(self, slug: str) -> str:
-        """Notion に正式名があればそれを返す。無ければ slug をそのまま返す（自動 t-... 用）。"""
-        return self._slug_to_display.get(slug, slug)
+    def display_name_for_slug(self, slug: str, fallback: str | None = None) -> str:
+        """Notion に正式名があればそれを返す。無ければ fallback、最後に slug を返す。"""
+        return self._slug_to_display.get(slug, fallback or slug)
 
     def auto_slug(self, title: str) -> str:
         return auto_slug_from_title(title)

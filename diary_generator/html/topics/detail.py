@@ -13,24 +13,27 @@ log = logger.get_logger()
 def _collect_topic_entries_by_slug(
     diary_entries: list[DiaryEntry],
     resolver: TopicSlugResolver,
-) -> dict[str, list[tuple[str, Topic]]]:
+) -> tuple[dict[str, list[tuple[str, Topic]]], dict[str, str]]:
     """
     canonical slug ごとに (date, topic) を収集する。
     別名・エイリアスが同一スラッグに解決される場合は同一バケットにマージされる。
     """
     combined_dict: dict[str, list[tuple[str, Topic]]] = defaultdict(list)
+    slug_display_fallbacks: dict[str, str] = {}
 
     for diary_entry in diary_entries:
         date = diary_entry.date
         for topic in diary_entry.topics:
             slug_key = resolver.slug(topic.title)
+            slug_display_fallbacks.setdefault(slug_key, topic.title)
             if (date, topic) not in combined_dict[slug_key]:
                 combined_dict[slug_key].append((date, topic))
             for hashtag in topic.hashtags:
                 sk = resolver.slug(hashtag)
+                slug_display_fallbacks.setdefault(sk, hashtag)
                 if (date, topic) not in combined_dict[sk]:
                     combined_dict[sk].append((date, topic))
-    return combined_dict
+    return combined_dict, slug_display_fallbacks
 
 
 def _collect_all_raw_labels(diary_entries: list[DiaryEntry]) -> list[str]:
@@ -182,10 +185,14 @@ def generate(diary_entries: list[DiaryEntry], resolver: TopicSlugResolver):
     topics_root = config.FILE_NAMES.OUTPUT_TOPICS_DIR_NAME
     per_page_dates = config.PAGINATE.TOPIC_DETAIL_DATES
 
-    topic_entries = _collect_topic_entries_by_slug(diary_entries, resolver)
+    topic_entries, slug_display_fallbacks = _collect_topic_entries_by_slug(
+        diary_entries, resolver
+    )
 
     for canonical_slug, entries in topic_entries.items():
-        display_name = resolver.display_name_for_slug(canonical_slug)
+        display_name = resolver.display_name_for_slug(
+            canonical_slug, fallback=slug_display_fallbacks.get(canonical_slug)
+        )
         grouped_by_date = _group_entries_by_date(entries)
         sorted_dates = sorted(grouped_by_date.keys(), reverse=True)
         latest_date = sorted_dates[0] if sorted_dates else None
