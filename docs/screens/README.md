@@ -16,5 +16,17 @@
 | パーツ名 | 目的 |
 |---|---|
 | [ヘッダー](/docs/screens/parts/header.md) | サイト名の表示、および各種ページへの誘導 |
-| [右バナー](/docs/screens/parts/right-banner.md) | サイト紹介文、およびカレンダーなどの表示 |
+| [サイドバー](/docs/screens/parts/sidebar.md) | サイト紹介文、およびカレンダーなどの表示 |
 | [フッター](/docs/screens/parts/footer.md) | コピーライトの表示 |
+|||
+| [トピックブロック](/docs/screens/parts/topic_block.md) | 1トピックあたりのブロック |
+
+## 共通画面設計
+
+左ペイン）
+ヘッダー
+メインコンテンツ
+フッター
+
+右ペイン）
+サイドバー

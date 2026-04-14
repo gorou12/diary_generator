@@ -5,7 +5,6 @@
 ## 目的
 - Notion を編集UIとして使い、日記を静的サイトとして出力する
 - 「日付ベース」「トピックベース」で横断閲覧できるようにする
-- `#非公開` を含むトピックは生成物に含めない（公開しない）
 
 ---
 
@@ -17,21 +16,33 @@
 - 取得対象ページの条件:
   - `日付` が入っている
   - `公開` が true
-  - `収集対象` がセットされている（index/noindex/auto など）
+- 取得対象コンテンツ:
+  - 見出しレベル3を見出し、次の見出しレベル3またはページの最後までを本文とする
 
 ### Output（生成物）
 - 生成先: `output/`
-- 静的ファイル: `static/` → `output/` へコピー
+- 静的ファイル: `static/` → `output/src/` へコピー
+  - ファビコン: `favicon.ico`
+  - 共通JS: `script.js`
+  - 共通CSS: `style.css`
+  - 検索ページ用JS: `search.js`
+  - 検索ページ用CSS: `search.css`
 - HTML:
   - トップ: `output/index.html`
   - 日付一覧/詳細: `output/dates/...`
   - トピック一覧/詳細: `output/topics/...`
-  - 検索ページ: `output/search.html`（JSONと組み合わせ）
+  - 検索ページ: `output/search.html`
 - JSON:
-  - 検索用: `output/static/json/search.json`（例）
-  - カレンダー用: `output/static/json/calendar.json`（例）
+  - 検索用: `output/json/search_data.json`
+  - カレンダー用: `output/json/calendar_data.json`
+- 画像:
+  - オリジナル画像: `output/images/...`
+  - サムネイル大: `output/thumbnails/large/...`
+  - サムネイル中: `output/thumbnails/middle/...`
+  - サムネイル小: `output/thumbnails/small/...`
 
-※ 生成物パスの厳密な定義は `diary_generator/config/filenames.py` を参照。
+### ログ出力
+- 生成先: `logs/`
 
 ---
 
