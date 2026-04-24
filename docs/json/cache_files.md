@@ -1,455 +1,512 @@
-# 内部キャッシュJSON設計
+# キャッシュファイル仕様
 
-## 1. この文書の目的
+## 1. 目的
 
-この文書は、Notion から取得した日記データを内部的に保存するための JSON キャッシュ構造を定義する。
+この文書は、日記ブログ生成で使用するキャッシュJSONファイルの責務・構造・制約を定義する。
 
-本キャッシュは公開用データではなく、以下の目的で使用する。
+対象ファイルは以下の2つ。
 
-- 差分取得判定
-- 再取得不要ページの詳細データ再利用
-- 全件生成データの再構成
-- キャッシュ欠損時の復旧判断
+- 全体インデックスキャッシュ
+- 詳細キャッシュ
 
-本キャッシュは内部実装用であり、公開URLや公開JSONの仕様は定義しない。  
-全体方針は `docs/policies.md`、変更目的は `docs/features/json_storage_change.md` を参照する。
+このキャッシュは Notion API の結果をそのまま保存するものではなく、
+**静的サイト生成に適した中間データ**として保持する。
 
 ---
 
 ## 2. 基本方針
 
-### 2.1 キャッシュの分離
+### 2.1 事実を保持する
 
-内部キャッシュは、少なくとも以下の2種類に分ける。
+キャッシュには、元データまたは抽出結果として安定して扱える**事実情報**を保存する。
 
-- 一覧メタ情報キャッシュ
-- 詳細データキャッシュ
+例:
 
-必要であれば、生成直前の統合データキャッシュを追加してもよい。  
-ただし、差分判定に必要な情報と詳細本文データは論理的に分離すること。
+- NotionページID
+- ブロックID
+- タイトル
+- 日付
+- タグ
+- 最終更新日時
+- ブロック種別
+- プレーンテキスト
 
----
+### 2.2 派生値は原則保持しない
 
-### 2.2 保存単位
+以下のような、ルール変更で変わりうる値は原則保持しない。
 
-キャッシュの保存単位は **Notion の日付ページ単位（page_id 単位）** とする。
+- 公開可否
+- 出力対象可否
+- source status
+- 一覧掲載可否
+- URL出力先の最終判定
 
-理由：
+これらはキャッシュ読み込み後に判定する。
 
-- 差分判定に `last_edited_time` を使いやすい
-- 詳細取得処理が日付ページ単位である
-- 日付ページごとの再取得・再利用に対応しやすい
+### 2.3 構造化データを優先する
 
----
+本文はHTML断片を主として保持しない。
+Notionブロックを構造化した形で保持し、HTMLは必要に応じて生成する。
 
-### 2.3 JSONの優先事項
+### 2.4 壊れても再生成可能であること
 
-本キャッシュ設計では、以下を重視する。
-
-- 読みやすさ
-- 壊れにくさ
-- 差分更新しやすさ
-- デバッグしやすさ
-- 将来の項目追加がしやすいこと
-
-過度な圧縮や難解なネストは避ける。
-
----
-
-## 3. キャッシュファイル一覧
-
-### 3.1 必須ファイル
-
-#### `cache/diary_page_index.json`
-日付ページ単位の一覧メタ情報を保存する。
-
-用途：
-
-- 差分取得判定
-- 公開対象・収集対象の判定
-- 削除・非公開化・対象外化の検知
+キャッシュはすべてNotionから再構築可能であることを前提とする。
+そのため、キャッシュは永続的な正本ではなく、再生成可能な中間成果物である。
 
 ---
 
-#### `cache/diary_page_details.json`
-日付ページ単位の詳細データを保存する。
+## 3. ファイル一覧
 
-用途：
+## 3.1 index cache
 
-- 再取得不要ページの再利用
-- 全件生成データの再構成
+想定パス例:
 
----
+```text
+cache/diary_index.json
+```
 
-### 3.2 任意ファイル
+役割:
 
-#### `cache/diary_data.json`
-生成用に組み立てた全件データを保存する。
+- データベース一覧の保持
+- 差分更新判定
+- 日記ページ単位の基本情報の保持
 
-用途：
+## 3.2 detail cache
 
-- 従来互換
-- デバッグ
-- 生成確認
+想定パス例:
 
-このファイルは必須ではない。  
-ただし既存コードとの互換維持や確認用途のため、当面残してもよい。
+```text
+cache/diary_detail.json
+```
 
----
+役割:
 
-## 4. `diary_page_index.json` 仕様
-
-## 4.1 役割
-
-`diary_page_index.json` は、各日付ページの最小限の一覧情報を保持する。  
-詳細ブロック本文は保持しない。
+- 日記ページごとのトピック抽出結果の保持
+- トピック本文ブロックの保持
+- HTML生成・検索用情報の保持
 
 ---
 
-## 4.2 JSON構造
+## 4. 全体インデックスキャッシュ仕様
 
-トップレベルはオブジェクトとし、`page_id` をキーにする。
-
-例：
+## 4.1 トップレベル構造
 
 ```json
 {
   "schema_version": 1,
-  "generated_at": "2026-04-22T14:30:00+09:00",
-  "pages": {
-    "1d4b3c...": {
-      "page_id": "1d4b3c...",
-      "date": "2026-04-21",
-      "title": "20260421",
-      "last_edited_time": "2026-04-21T22:14:03.000Z",
-      "is_public": true,
-      "is_collectible": true,
-      "index_direction": "public",
-      "source_status": "active"
-    },
-    "8a92ef...": {
-      "page_id": "8a92ef...",
-      "date": "2026-04-20",
-      "title": "20260420",
-      "last_edited_time": "2026-04-20T23:59:12.000Z",
-      "is_public": true,
-      "is_collectible": false,
-      "index_direction": "private",
-      "source_status": "filtered_out"
+  "generated_at": "2026-04-22T08:00:00+09:00",
+  "entries": [
+    {
+      "page_id": "xxxxxxxx",
+      "page_name": "20260422",
+      "entry_date": "2026-04-22",
+      "last_edited_time": "2026-04-22T07:10:00.000Z",
+      "source_last_edited_time": "2026-04-22T07:10:00.000Z"
     }
-  }
+  ]
 }
 ```
 
----
+## 4.2 フィールド定義
 
-## 4.3 フィールド定義
+### `schema_version`
+- 型: number
+- 必須
+- JSONスキーマバージョン
 
-### トップレベル
+### `generated_at`
+- 型: string
+- 必須
+- このJSONを書き出した日時
 
-* `schema_version`
+### `entries`
+- 型: array
+- 必須
+- 日記ページ単位の一覧
 
-  * 型: number
-  * 必須
-  * このJSON構造のバージョン
-* `generated_at`
+### `entries[].page_id`
+- 型: string
+- 必須
+- NotionページID
 
-  * 型: string (ISO 8601)
-  * 必須
-  * このキャッシュを書き出した日時
-* `pages`
+### `entries[].page_name`
+- 型: string
+- 必須
+- Notion上のページ名
+- 例: `20260422`
 
-  * 型: object
-  * 必須
-  * `page_id` をキーとするページ辞書
+### `entries[].entry_date`
+- 型: string
+- 必須
+- ブログ上での日付
+- ISO日付文字列を推奨
+- 例: `2026-04-22`
 
----
+### `entries[].last_edited_time`
+- 型: string
+- 必須
+- キャッシュ側で比較に使う最終更新日時
 
-### `pages[page_id]`
+### `entries[].source_last_edited_time`
+- 型: string
+- 必須
+- Notionから取得した最終更新日時
+- `last_edited_time` と同値でもよい
+- 今後内部加工が必要になった場合の拡張余地として分けてもよい
 
-* `page_id`
+## 4.3 制約
 
-  * 型: string
-  * 必須
-  * Notion ページID
-* `date`
-
-  * 型: string (`YYYY-MM-DD`)
-  * 必須
-  * 日付ページの日付
-* `title`
-
-  * 型: string
-  * 必須
-  * Notion 上のページタイトル
-* `last_edited_time`
-
-  * 型: string (ISO 8601)
-  * 必須
-  * 差分判定に使用する
-* `is_public`
-
-  * 型: boolean
-  * 必須
-  * 公開対象かどうか
-* `is_collectible`
-
-  * 型: boolean
-  * 必須
-  * 収集対象かどうか
-* `index_direction`
-
-  * 型: string
-  * 必須
-  * 現行実装の index_direction を保持する
-* `source_status`
-
-  * 型: string
-  * 必須
-  * `active` / `filtered_out` / `deleted` などの内部状態を表す
+- `page_id` は一意でなければならない
+- `entry_date` は日付ページURLの基準になるため、同一公開集合内で一意であることが望ましい
+- entries は新しい日付順または処理しやすい一定順で並べる
+- `source_status` は持たない
 
 ---
 
-## 4.4 制限事項
+## 5. 詳細キャッシュ仕様
 
-* `pages` のキーと `page_id` フィールドは一致しなければならない
-* `date` は1ページにつき1つとする
-* `last_edited_time` は Notion の値をそのまま保持する
-* 差分判定は基本的に `last_edited_time` を基準に行う
-* `source_status` の列挙値は実装とドキュメントで一致させること
-
----
-
-## 5. `diary_page_details.json` 仕様
-
-## 5.1 役割
-
-`diary_page_details.json` は、各日付ページから取得した詳細データを保持する。
-ここには、最終的に `DiaryEntry` 生成へ必要なトピック単位データを保存する。
-
----
-
-## 5.2 JSON構造
-
-トップレベルはオブジェクトとし、`page_id` をキーにする。
-
-例：
+## 5.1 トップレベル構造
 
 ```json
 {
   "schema_version": 1,
-  "generated_at": "2026-04-22T14:30:00+09:00",
-  "pages": {
-    "1d4b3c...": {
-      "page_id": "1d4b3c...",
-      "date": "2026-04-21",
-      "last_edited_time": "2026-04-21T22:14:03.000Z",
+  "generated_at": "2026-04-22T08:00:00+09:00",
+  "entries": [
+    {
+      "page_id": "xxxxxxxx",
+      "page_name": "20260422",
+      "entry_date": "2026-04-22",
+      "last_edited_time": "2026-04-22T07:10:00.000Z",
       "topics": [
         {
-          "title": "近鉄",
-          "body_html": "<p>今日は近鉄で移動した。</p>",
-          "hashtags": ["交通", "近鉄"],
-          "is_private": false,
-          "slug_hint": null
-        },
-        {
-          "title": "作業メモ",
-          "body_html": "<p>内部作業のメモ。</p>",
-          "hashtags": ["非公開"],
-          "is_private": true,
-          "slug_hint": null
+          "topic_id": "block_h3_xxxx",
+          "title": "買ったもの",
+          "tags": ["買い物", "本"],
+          "blocks": [
+            {
+              "block_id": "block_p_1",
+              "type": "paragraph",
+              "plain_text": "技術書を1冊買った。",
+              "rich_text": [
+                {
+                  "type": "text",
+                  "text": "技術書を1冊買った。",
+                  "href": null,
+                  "annotations": {
+                    "bold": false,
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                    "code": false,
+                    "color": "default"
+                  }
+                }
+              ]
+            }
+          ],
+          "plain_text": "技術書を1冊買った。"
         }
       ]
     }
+  ]
+}
+```
+
+---
+
+## 5.2 フィールド定義
+
+### `entries`
+- 型: array
+- 必須
+- 日記ページ単位の詳細情報
+
+### `entries[].page_id`
+- 型: string
+- 必須
+- NotionページID
+- index cache と対応する
+
+### `entries[].page_name`
+- 型: string
+- 必須
+- Notion上のページ名
+
+### `entries[].entry_date`
+- 型: string
+- 必須
+- 公開上の日付
+
+### `entries[].last_edited_time`
+- 型: string
+- 必須
+- この詳細データが対応するNotion最終更新日時
+
+### `entries[].topics`
+- 型: array
+- 必須
+- 当該日記ページから抽出したトピック一覧
+
+---
+
+## 5.3 topic フィールド
+
+### `topics[].topic_id`
+- 型: string
+- 必須
+- 原則として `heading_3` ブロックID
+- トピックアンカーの識別子にも利用可能
+
+### `topics[].title`
+- 型: string
+- 必須
+- 見出し文字列
+
+### `topics[].tags`
+- 型: array[string]
+- 必須
+- 本文または見出しから抽出したタグ一覧
+- 存在しない場合は空配列
+
+### `topics[].blocks`
+- 型: array
+- 必須
+- トピック本文を構成するブロック列
+
+### `topics[].plain_text`
+- 型: string
+- 任意
+- トピック本文から抽出したプレーンテキスト
+- 検索・抜粋生成用
+- 再生成可能な補助データ
+
+---
+
+## 5.4 block フィールド
+
+ブロックはNotionの主要ブロックを、静的サイト生成に必要な範囲で正規化して保持する。
+
+共通フィールド:
+
+```json
+{
+  "block_id": "block_xxxx",
+  "type": "paragraph"
+}
+```
+
+### 共通項目
+
+#### `block_id`
+- 型: string
+- 必須
+- NotionブロックID
+
+#### `type`
+- 型: string
+- 必須
+- 例:
+  - `paragraph`
+  - `bulleted_list_item`
+  - `numbered_list_item`
+  - `to_do`
+  - `quote`
+  - `callout`
+  - `image`
+  - `divider`
+  - `code`
+  - `bookmark`
+  - `heading_3`
+
+---
+
+## 5.5 テキスト系ブロック例
+
+```json
+{
+  "block_id": "block_p_1",
+  "type": "paragraph",
+  "plain_text": "今日は本を買った。",
+  "rich_text": [
+    {
+      "type": "text",
+      "text": "今日は本を買った。",
+      "href": null,
+      "annotations": {
+        "bold": false,
+        "italic": false,
+        "strikethrough": false,
+        "underline": false,
+        "code": false,
+        "color": "default"
+      }
+    }
+  ]
+}
+```
+
+### `plain_text`
+- 型: string
+- 任意だが推奨
+- ブロック全体の単純テキスト
+
+### `rich_text`
+- 型: array
+- 任意
+- 装飾・リンクを含むテキスト構造
+
+---
+
+## 5.6 リスト系ブロック例
+
+```json
+{
+  "block_id": "block_li_1",
+  "type": "bulleted_list_item",
+  "plain_text": "技術書",
+  "rich_text": [
+    {
+      "type": "text",
+      "text": "技術書",
+      "href": null,
+      "annotations": {
+        "bold": false,
+        "italic": false,
+        "strikethrough": false,
+        "underline": false,
+        "code": false,
+        "color": "default"
+      }
+    }
+  ]
+}
+```
+
+必要に応じて将来以下を追加してよい。
+
+- `children`
+- `checked` (`to_do` 用)
+
+---
+
+## 5.7 画像ブロック例
+
+```json
+{
+  "block_id": "block_img_1",
+  "type": "image",
+  "image": {
+    "source_type": "file",
+    "url": "https://..."
+  }
+}
+```
+
+### `image.source_type`
+- `file` / `external` など
+
+### `image.url`
+- 画像URL
+- 一時URLの扱いは別途実装ポリシーで定義する
+
+---
+
+## 5.8 コードブロック例
+
+```json
+{
+  "block_id": "block_code_1",
+  "type": "code",
+  "plain_text": "print('hello')",
+  "code": {
+    "language": "python",
+    "text": "print('hello')"
   }
 }
 ```
 
 ---
 
-## 5.3 フィールド定義
+## 6. 抽出ルール
 
-### トップレベル
+### 6.1 トピック区切り
 
-* `schema_version`
+- `heading_3` をトピック開始ブロックとみなす
+- 次の `heading_3` 直前までをそのトピック本文とする
 
-  * 型: number
-  * 必須
-* `generated_at`
+### 6.2 タグ抽出
 
-  * 型: string (ISO 8601)
-  * 必須
-* `pages`
+- タグは本文または見出し中の `#タグ` 表記から抽出する
+- 保存時は `#` を除いた文字列に正規化してよい
+- 同一タグは topic 内で重複除去する
 
-  * 型: object
-  * 必須
+### 6.3 プレーンテキスト生成
 
----
-
-### `pages[page_id]`
-
-* `page_id`
-
-  * 型: string
-  * 必須
-* `date`
-
-  * 型: string (`YYYY-MM-DD`)
-  * 必須
-* `last_edited_time`
-
-  * 型: string (ISO 8601)
-  * 必須
-  * 一覧キャッシュとの対応確認にも使用する
-* `topics`
-
-  * 型: array
-  * 必須
-  * 日付ページ配下のトピック一覧
-
----
-
-### `topics[]`
-
-* `title`
-
-  * 型: string
-  * 必須
-  * トピック見出し
-* `body_html`
-
-  * 型: string
-  * 必須
-  * HTML化済み本文
-* `hashtags`
-
-  * 型: array of string
-  * 必須
-  * 本文内から抽出したハッシュタグ
-* `is_private`
-
-  * 型: boolean
-  * 必須
-  * `#非公開` 等により公開除外されるトピックかどうか
-* `slug_hint`
-
-  * 型: string or null
-  * 任意
-  * 将来の slug 制御や調査に使う補助情報。不要なら省略可
-
----
-
-## 5.4 制限事項
-
-* `topics` の順序は日付ページ上の記載順を維持する
-* 本文データは生成に必要な粒度を保持する
-* 公開除外対象トピックを保持するかどうかは実装方針次第だが、少なくとも最終出力では除外されなければならない
-* `last_edited_time` は対応する一覧キャッシュと一致することが望ましい
-* 詳細キャッシュ単体では差分判定を行わず、一覧キャッシュと併用する
-
----
-
-## 6. `diary_data.json` 仕様（任意）
-
-## 6.1 役割
-
-`diary_data.json` は、全件生成用に再構成したデータを保存するための任意キャッシュである。
-
-用途：
-
-* 従来コードとの互換維持
-* デバッグ
-* 生成前後比較
-
-このファイルは将来的に廃止してもよい。
-
----
-
-## 6.2 注意
-
-* 正本は `diary_page_index.json` と `diary_page_details.json` とする
-* `diary_data.json` が存在しても、差分判定の基準にしてはならない
-* 必要なら毎回再生成してよい
+- `plain_text` は検索・抜粋用補助データ
+- 元となるブロック列から再生成可能であること
 
 ---
 
 ## 7. 更新ルール
 
-### 7.1 一覧メタ情報更新
+### 7.1 index cache 更新
 
-毎回の一覧走査結果をもとに、`diary_page_index.json` を更新する。
+- Notionデータベース一覧から全件再生成してよい
+- ただし entries 単位で既存と比較し、差分判定に利用する
 
-* 新規ページは追加
-* 更新ページは `last_edited_time` 等を更新
-* 非公開化・対象外化・削除は `source_status` に反映する
-* 必要なら対象外ページを残したまま状態変更してよい
+### 7.2 detail cache 更新
 
----
+- 新規または更新対象ページのみ再取得する
+- 非更新ページの詳細は既存キャッシュを再利用する
+- 削除ページは detail cache から除外する
 
-### 7.2 詳細データ更新
+### 7.3 一貫性
 
-`diary_page_details.json` は、再取得対象ページのみ上書き更新する。
-
-* 再取得対象ページは最新内容で置き換える
-* 再取得不要ページは既存値を保持する
-* 削除・非公開化・対象外化ページは、必要に応じて削除または無効化してよい
+- `page_id` をキーとして index cache と detail cache を対応づける
+- detail cache に存在するページは、原則として index cache にも存在しなければならない
 
 ---
 
-## 8. 障害時・破損時の扱い
+## 8. 非採用項目
 
-### 8.1 基本方針
+以下は現時点では採用しない。
 
-キャッシュが壊れている場合、不整合な状態で無理に続行しない。
+### `source_status`
+理由:
+- 元データから導出できる
+- 取得失敗は異常終了とするため、中途半端な状態管理が不要
 
----
+### `topic.is_public`
+理由:
+- `#非公開` などのルールから生成時に判定できる
+- ルール変更時にキャッシュ更新が不要になる
 
-### 8.2 想定する対処
-
-* JSONパース不能: キャッシュ無効として扱う
-* 必須キー欠損: キャッシュ無効として扱う
-* schema_version 不一致: 互換処理がなければ再生成する
-* index と details の対応不整合: 必要に応じて全件再取得へフォールバックする
-
----
-
-## 9. schema_version
-
-将来の形式変更に備え、各キャッシュファイルは `schema_version` を持つ。
-
-ルール：
-
-* 互換性のない変更をした場合は version を上げる
-* 実装側は version を確認し、読めない場合は再生成またはフォールバックする
+### 1記事1JSON保存
+理由:
+- まずは単一ファイルのほうが実装が単純
+- 現時点では分割の恩恵より複雑さが勝つ
 
 ---
 
-## 10. 実装上の注意
+## 9. バージョン管理方針
 
-* 文字列キーの順序や整形は可読性を重視してよい
-* JSON書き込みは可能な限り原子的に行う
-* 一覧キャッシュと詳細キャッシュは、同一実行内で整合が取れていること
-* 内部キャッシュは公開ディレクトリに配置しない
-
----
-
-## 11. 非目標
-
-この文書では以下は定義しない。
-
-* 公開用 JSON (`search_data.json`, `calendar_data.json`) の仕様
-* HTMLテンプレート構造
-* slug最終決定ロジック
-* OGPキャッシュ仕様
-* Notion入力ルール
+- JSON構造を変更した場合は `schema_version` を更新する
+- 互換性がない場合は旧キャッシュを破棄して再生成する
+- キャッシュ移行ロジックは、必要になるまで原則作らない
 
 ---
 
-## 12. Cursor への補足
+## 10. 想定ファイルサイズと将来方針
 
-Cursor に実装を依頼する際は、以下を明示すること。
+現時点では単一JSONで管理するが、将来以下に該当した場合は分割を検討する。
 
-* 本文書は内部キャッシュJSONの正本である
-* 公開用 JSON の形式変更は今回の対象外である
-* URL構造変更は今回の対象外である
-* 不明点は `docs/policies.md` と `docs/features/json_storage_change.md` を優先する
+- detail cache のサイズが大きくなりすぎる
+- 更新対象の一部書き換えが非効率になる
+- diff確認やデバッグが困難になる
+- 実行時間やメモリ使用量が問題になる
+
+その場合の候補:
+
+- 日付単位で分割
+- ページID単位で分割
+- indexは単一、detailのみ分割
