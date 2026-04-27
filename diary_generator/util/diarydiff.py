@@ -1,102 +1,60 @@
-import difflib
-import json
-import os
-import shutil
 from typing import Any
 
-from diary_generator.config.configuration import config
-from diary_generator.logger import logger, notifylogger
+from diary_generator.logger import notifylogger
 
-default_log = logger.get_logger()
 notify_log = notifylogger.get_logger()
 
-old_file_path = config.FILE_NAMES.CACHE_PREVIOUS_DIARY_PATH
-new_file_path = config.FILE_NAMES.CACHE_DIARY_PATH
 
-
-def copy_previous_json():
-    """
-    指定されたJSONをバックアップする
-    """
-    if os.path.exists(new_file_path):
-        shutil.copy(
-            new_file_path,
-            old_file_path,
-        )
-        default_log.info("✅Diary JSONコピー完了")
-
-
-def diff_diary_json():
-    """
-    新旧のJSONのDIFFを取り、Discordに通知する
-    """
-    if not os.path.exists(old_file_path):
-        notify_log.info("Diaryを新しくダウンロードしました")
-        return
-
-    with open(old_file_path, "r", encoding="utf-8") as f:
-        old_data = json.load(f)
-
-    with open(new_file_path, "r", encoding="utf-8") as f:
-        new_data = json.load(f)
-
-    diff_diary_data(old_data, new_data)
-
-
-def diff_diary_data(
-    old_data: list[dict[str, Any]], new_data: list[dict[str, Any]]
+def diff_detail_entries(
+    old_entries: list[dict[str, Any]],
+    new_entries: list[dict[str, Any]],
 ) -> None:
-    """日記データのDIFFを取り、Discord通知ログに出力する。"""
-    diff_results = []
+    """diary_detail.json の entries 同士を比較し、差分を Discord 通知ログに出力する。
 
-    if not old_data and new_data:
+    比較単位はトピック（topic_id を主キー）。
+    判定: 新規 / 削除 / 更新（last_edited_time の変化）。
+    """
+    if not old_entries and new_entries:
         notify_log.info("Diaryを新しくダウンロードしました")
         return
 
-    if not old_data or not new_data:
-        notify_log.warning("差分を取ろうとしましたが、どちらかのJSONが空みたいです")
+    if not old_entries or not new_entries:
+        notify_log.warning("差分を取ろうとしましたが、どちらかのデータが空みたいです")
         return
 
-    old_contents = {}
-    for old_date in old_data:
-        date = old_date.get("date")
-        old_contents[date] = {}
-        for topic in old_date.get("topics"):
-            title: str = topic["title"]
-            items: list = topic["content"] + topic["hashtags"]
-            old_contents[date][title] = items
+    old_topics = _index_topics_by_id(old_entries)
+    new_topics = _index_topics_by_id(new_entries)
 
-    new_contents = {}
-    for new_date in new_data:
-        date = new_date.get("date")
-        new_contents[date] = {}
-        for topic in new_date.get("topics"):
-            title: str = topic["title"]
-            items: list = topic["content"] + topic["hashtags"]
-            new_contents[date][title] = items
+    results: list[str] = []
 
-    for o_date, o_value in old_contents.items():
-        if o_date not in new_contents:
-            diff_results.append(f"del: {o_date}")
+    for topic_id, (date, title, _) in old_topics.items():
+        if topic_id not in new_topics:
+            results.append(f"del: {date} → {title}")
+
+    for topic_id, (date, title, last_edited) in new_topics.items():
+        if topic_id not in old_topics:
+            results.append(f"add: {date} → {title}")
             continue
-        for o_title, o_contents in o_value.items():
-            if o_title not in new_contents[o_date]:
-                diff_results.append(f"del: {o_date} -> {o_title}")
+        old_last_edited = old_topics[topic_id][2]
+        if last_edited != old_last_edited:
+            results.append(f"changed: {date} → {title}")
 
-    for n_date, n_value in new_contents.items():
-        if n_date not in old_contents:
-            diff_results.append(f"add: {n_date}")
-            continue
-        for n_title, n_contents in n_value.items():
-            if n_title not in old_contents[n_date]:
-                diff_results.append(f"add: {n_date} -> {n_title}")
+    if results:
+        notify_log.info("\n" + "\n".join(results))
+
+
+def _index_topics_by_id(
+    entries: list[dict[str, Any]],
+) -> dict[str, tuple[str, str, str]]:
+    """entries から topic_id をキーに {topic_id: (date, title, last_edited_time)} を返す。"""
+    index: dict[str, tuple[str, str, str]] = {}
+    for entry in entries:
+        date = entry.get("entry_date", "")
+        for topic in entry.get("topics", []):
+            topic_id = topic.get("topic_id", "")
+            if not topic_id:
                 continue
-            o_contents = old_contents[n_date][n_title]
-            diff = list(difflib.unified_diff(o_contents, n_contents, lineterm=""))
-            if diff:
-                diff_text = "\n".join(diff)
-                diff_results.append(
-                    f"changed: {n_date} -> {n_title}\n```diff\n{diff_text}\n```"
-                )
-    if diff_results:
-        notify_log.info("\n" + "\n".join(diff_results))
+            title = topic.get("title", "")
+            last_edited = topic.get("last_edited_time", "")
+            index[topic_id] = (date, title, last_edited)
+    return index

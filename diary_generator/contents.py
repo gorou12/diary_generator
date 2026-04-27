@@ -30,16 +30,12 @@ def get() -> list[DiaryEntry]:
         index_cache = _read_json(index_path)
         detail_cache = _read_json(detail_path)
     else:
-        old_raw_data: list[dict[str, Any]] = []
         old_index_cache: dict[str, Any] | None = None
         old_detail_cache: dict[str, Any] | None = None
 
         if has_cache and _is_valid_cache_pair(index_path, detail_path):
             old_index_cache = _read_json(index_path)
             old_detail_cache = _read_json(detail_path)
-            old_raw_data = _compose_raw_data_from_caches(
-                old_index_cache, old_detail_cache
-            )
 
         index_entries = _fetch_diary_index_entries()
         detail_entries = _build_detail_entries(
@@ -62,13 +58,9 @@ def get() -> list[DiaryEntry]:
 
         _write_json(index_path, index_cache)
         _write_json(detail_path, detail_cache)
-        _write_json(
-            config.FILE_NAMES.CACHE_DIARY_PATH,
-            _compose_raw_data_from_caches(index_cache, detail_cache),
-        )
 
-        new_raw_data = _compose_raw_data_from_caches(index_cache, detail_cache)
-        diarydiff.diff_diary_data(old_raw_data, new_raw_data)
+        old_entries = old_detail_cache.get("entries", []) if old_detail_cache else []
+        diarydiff.diff_detail_entries(old_entries, detail_entries)
 
     raw_data = _compose_raw_data_from_caches(index_cache, detail_cache)
     return _parse_json_to_diary_entries(raw_data)
