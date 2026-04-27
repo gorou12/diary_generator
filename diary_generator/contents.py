@@ -37,11 +37,13 @@ def get() -> list[DiaryEntry]:
             old_index_cache = _read_json(index_path)
             old_detail_cache = _read_json(detail_path)
 
+        now = datetime.now(JST)
         index_entries = _fetch_diary_index_entries()
         detail_entries = _build_detail_entries(
             index_entries=index_entries,
             old_index_cache=old_index_cache,
             old_detail_cache=old_detail_cache,
+            now=now,
         )
 
         generated_at = _now_iso()
@@ -96,7 +98,6 @@ def _write_json(json_path: str, content: Any):
 
 def _parse_json_to_diary_entries(raw_data: list[dict[str, Any]]) -> list[DiaryEntry]:
     entries = []
-    now = datetime.now(JST)
     cache.initialize()
 
     for entry_data in raw_data:
@@ -109,11 +110,6 @@ def _parse_json_to_diary_entries(raw_data: list[dict[str, Any]]) -> list[DiaryEn
                 hashtags=topic_data["hashtags"],
             )
             for topic_data in entry_data["topics"]
-            if (  # ブロックを最後にいじってから5分後に収集対象とする
-                now
-                > _parse_iso_datetime(topic_data["last_edited_time"])
-                + timedelta(minutes=5)
-            )
         ]
         index_direction = _match_index_direction(entry_data["index_direction"])
         date = entry_data["date"]
@@ -192,6 +188,7 @@ def _build_detail_entries(
     index_entries: list[dict[str, Any]],
     old_index_cache: dict[str, Any] | None,
     old_detail_cache: dict[str, Any] | None,
+    now: datetime,
 ) -> list[dict[str, Any]]:
     old_index_by_page_id: dict[str, dict[str, Any]] = {}
     old_detail_by_page_id: dict[str, dict[str, Any]] = {}
@@ -215,11 +212,13 @@ def _build_detail_entries(
         old_index_entry = old_index_by_page_id.get(page_id)
         old_detail_entry = old_detail_by_page_id.get(page_id)
 
+        # has_pending_topics=True なら前回保留あり → last_edited_time が変わっていなくても強制再取得
         unchanged = (
             old_index_entry is not None
             and old_detail_entry is not None
             and old_index_entry.get("last_edited_time")
             == index_entry.get("last_edited_time")
+            and not old_detail_entry.get("has_pending_topics", False)
         )
         if unchanged:
             detail_entries.append(
@@ -232,7 +231,7 @@ def _build_detail_entries(
             )
             continue
 
-        topics = _fetch_diary_page(page_id)
+        topics, has_pending = _fetch_diary_page(page_id, now)
         detail_entries.append(
             {
                 "page_id": page_id,
@@ -240,6 +239,7 @@ def _build_detail_entries(
                 "entry_date": index_entry["entry_date"],
                 "last_edited_time": index_entry["last_edited_time"],
                 "topics": topics,
+                "has_pending_topics": has_pending,
             }
         )
         log.debug("- 日付データ(%s) の詳細取得完了", index_entry["entry_date"])
@@ -247,11 +247,14 @@ def _build_detail_entries(
     return detail_entries
 
 
-def _fetch_diary_page(page_id: str) -> list[dict[str, Any]]:
+def _fetch_diary_page(page_id: str, now: datetime) -> tuple[list[dict[str, Any]], bool]:
+    """ページのブロックを取得してトピックに変換する。
+    戻り値: (topics, has_pending_topics)
+    has_pending_topics が True の場合、5分未満フィルタで除外されたトピックが存在する。
+    """
     all_blocks = []
     cursor = None
 
-    # ページネーションでブロックを取得
     while True:
         data = notion_api.get_block_children(page_id, start_cursor=cursor)
         results = data.get("results", [])
@@ -263,6 +266,7 @@ def _fetch_diary_page(page_id: str) -> list[dict[str, Any]]:
 
     topics: list[dict[str, Any]] = []
     current_topic = _new_topic()
+    has_pending = False
 
     for block in all_blocks:
         block_type = block.get("type")
@@ -272,7 +276,8 @@ def _fetch_diary_page(page_id: str) -> list[dict[str, Any]]:
         if block_type == "heading_3":  # Notionの「見出し3」がトピック名に相当
             if not text_content:
                 continue  # 空の見出しは無視
-            _finalize_topic(topics, current_topic)
+            pending = _finalize_topic(topics, current_topic, now)
+            has_pending = has_pending or pending
             current_topic = _new_topic(
                 title=text_content,
                 topic_id=block.get("id", ""),
@@ -281,6 +286,8 @@ def _fetch_diary_page(page_id: str) -> list[dict[str, Any]]:
             _extend_unique(current_topic["tags"], _extract_hashtags(text_content))
         else:
             if not current_topic["title"]:
+                continue
+            if block_type == "paragraph" and not text_content:
                 continue
             _update_topic_last_edited_time(current_topic, last_edited_time)
 
@@ -292,8 +299,9 @@ def _fetch_diary_page(page_id: str) -> list[dict[str, Any]]:
             if normalized_block:
                 current_topic["blocks"].append(normalized_block)
 
-    _finalize_topic(topics, current_topic)
-    return topics
+    pending = _finalize_topic(topics, current_topic, now)
+    has_pending = has_pending or pending
+    return topics, has_pending
 
 
 def _new_topic(
@@ -311,17 +319,25 @@ def _new_topic(
     }
 
 
-def _finalize_topic(topics: list[dict[str, Any]], topic: dict[str, Any]) -> None:
+def _finalize_topic(
+    topics: list[dict[str, Any]],
+    topic: dict[str, Any],
+    now: datetime,
+) -> bool:
+    """トピックを確定してリストに追加する。戻り値は has_pending（5分未満で保留した場合 True）。"""
     if not topic.get("title"):
-        return
+        return False
     if "非公開" in topic.get("tags", []):
-        return
+        return False  # 確定除外（保留ではない）
+    if _parse_iso_datetime(topic["last_edited_time"]) + timedelta(minutes=5) > now:
+        return True  # 5分未満: キャッシュに含めず保留
     topic["plain_text"] = " ".join(
         block.get("plain_text", "")
         for block in topic.get("blocks", [])
         if block.get("plain_text")
     ).strip()
     topics.append(topic)
+    return False
 
 
 def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
