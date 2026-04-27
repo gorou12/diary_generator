@@ -100,6 +100,7 @@ cache/diary_detail.json
       "page_id": "xxxxxxxx",
       "page_name": "20260422",
       "entry_date": "2026-04-22",
+      "index_direction": "index",
       "last_edited_time": "2026-04-22T07:10:00.000Z",
       "source_last_edited_time": "2026-04-22T07:10:00.000Z"
     }
@@ -154,6 +155,12 @@ cache/diary_detail.json
 - `last_edited_time` と同値でもよい
 - 今後内部加工が必要になった場合の拡張余地として分けてもよい
 
+### `entries[].index_direction`
+- 型: string
+- 必須
+- Notionの日記ページメタデータ由来の事実値
+- 例: `index`, `noindex`
+
 ## 4.3 制約
 
 - `page_id` は一意でなければならない
@@ -177,10 +184,12 @@ cache/diary_detail.json
       "page_name": "20260422",
       "entry_date": "2026-04-22",
       "last_edited_time": "2026-04-22T07:10:00.000Z",
+      "has_pending_topics": false,
       "topics": [
         {
           "topic_id": "block_h3_xxxx",
           "title": "買ったもの",
+          "last_edited_time": "2026-04-22T07:10:00.000Z",
           "tags": ["買い物", "本"],
           "blocks": [
             {
@@ -242,6 +251,12 @@ cache/diary_detail.json
 - 必須
 - この詳細データが対応するNotion最終更新日時
 
+### `entries[].has_pending_topics`
+- 型: boolean
+- 必須
+- 取得時点で、最終更新から一定時間未満のため詳細キャッシュに含めなかったトピックが存在したか
+- `true` の場合、次回実行時は `last_edited_time` が同じでも詳細再取得対象とする
+
 ### `entries[].topics`
 - 型: array
 - 必須
@@ -257,6 +272,11 @@ cache/diary_detail.json
 - 原則として `heading_3` ブロックID
 - トピックアンカーの識別子にも利用可能
 
+### `topics[].last_edited_time`
+- 型: string
+- 必須
+- 当該トピック本文に含まれる有効ブロックのうち、最も新しい最終更新日時
+
 ### `topics[].title`
 - 型: string
 - 必須
@@ -265,7 +285,8 @@ cache/diary_detail.json
 ### `topics[].tags`
 - 型: array[string]
 - 必須
-- 本文または見出しから抽出したタグ一覧
+- `#` から始まる段落行から抽出したタグ一覧
+- 見出し中や文中の `#タグ` は抽出対象外
 - 存在しない場合は空配列
 
 ### `topics[].blocks`
@@ -425,6 +446,11 @@ cache/diary_detail.json
 }
 ```
 
+### 空段落の除外
+
+- `type = "paragraph"` かつ本文テキストが空のブロックは保存しない
+- 空段落はNotion上で編集過程により増減しやすく、差分通知や更新判定のノイズになるためである
+
 ---
 
 ## 6. 抽出ルール
@@ -437,13 +463,22 @@ cache/diary_detail.json
 ### 6.2 タグ抽出
 
 - タグは本文または見出し中の `#タグ` 表記から抽出する
+- タグは、`#` から始まる段落行から抽出する
 - 保存時は `#` を除いた文字列に正規化してよい
 - 同一タグは topic 内で重複除去する
+- タグ行そのものは topic の本文ブロック列には含めない
 
 ### 6.3 プレーンテキスト生成
 
 - `plain_text` は検索・抜粋用補助データ
 - 元となるブロック列から再生成可能であること
+
+### 6.4 編集中トピック
+
+- 最終更新から一定時間未満のトピックは詳細キャッシュに含めない
+- その場合は entry 単位で `has_pending_topics = true` を保持する
+- `has_pending_topics = true` の entry は、次回実行時に再取得対象とする
+- これにより、編集中データの取り込み防止と、後続実行での確実な反映を両立する
 
 ---
 
@@ -485,6 +520,16 @@ cache/diary_detail.json
 理由:
 - まずは単一ファイルのほうが実装が単純
 - 現時点では分割の恩恵より複雑さが勝つ
+
+### 旧 `diary_data.json` 互換
+理由:
+- 旧形式互換を維持すると、表示都合で平坦化したデータと通知都合で必要な構造化データが混ざる
+- 現在は `diary_index.json` / `diary_detail.json` を正とする
+
+### 差分通知の比較単位
+- 差分通知は `diary_detail.json` の topic 単位で行う
+- 主キーは `topic_id`
+- 更新判定は `last_edited_time` の変化による
 
 ---
 
