@@ -8,6 +8,8 @@ class FileName:
 
     CACHE_DIARY_PATH: str = f"{CACHE_DIR_NAME}diary_data.json"
     CACHE_PREVIOUS_DIARY_PATH: str = f"{CACHE_DIR_NAME}diary_data_prev.json"
+    CACHE_DIARY_INDEX_PATH: str = f"{CACHE_DIR_NAME}diary_index.json"
+    CACHE_DIARY_DETAIL_PATH: str = f"{CACHE_DIR_NAME}diary_detail.json"
     CACHE_OGP_PATH: str = f"{CACHE_DIR_NAME}ogp.json"
     CACHE_TWITTER_PATH: str = f"{CACHE_DIR_NAME}twitter.json"
 

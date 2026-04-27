@@ -2,6 +2,7 @@ import difflib
 import json
 import os
 import shutil
+from typing import Any
 
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger, notifylogger
@@ -29,8 +30,6 @@ def diff_diary_json():
     """
     新旧のJSONのDIFFを取り、Discordに通知する
     """
-    diff_results = []
-
     if not os.path.exists(old_file_path):
         notify_log.info("Diaryを新しくダウンロードしました")
         return
@@ -40,6 +39,19 @@ def diff_diary_json():
 
     with open(new_file_path, "r", encoding="utf-8") as f:
         new_data = json.load(f)
+
+    diff_diary_data(old_data, new_data)
+
+
+def diff_diary_data(
+    old_data: list[dict[str, Any]], new_data: list[dict[str, Any]]
+) -> None:
+    """日記データのDIFFを取り、Discord通知ログに出力する。"""
+    diff_results = []
+
+    if not old_data and new_data:
+        notify_log.info("Diaryを新しくダウンロードしました")
+        return
 
     if not old_data or not new_data:
         notify_log.warning("差分を取ろうとしましたが、どちらかのJSONが空みたいです")
