@@ -291,7 +291,7 @@ def _fetch_diary_page(page_id: str, now: datetime) -> tuple[list[dict[str, Any]]
                 continue
             _update_topic_last_edited_time(current_topic, last_edited_time)
 
-            if text_content.startswith("#"):
+            if block_type == "paragraph" and text_content.startswith("#"):
                 _extend_unique(current_topic["tags"], _extract_hashtags(text_content))
                 continue
 
