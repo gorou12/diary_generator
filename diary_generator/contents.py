@@ -329,8 +329,12 @@ def _finalize_topic(
         return False
     if "非公開" in topic.get("tags", []):
         return False  # 確定除外（保留ではない）
-    if _parse_iso_datetime(topic["last_edited_time"]) + timedelta(minutes=5) > now:
-        return True  # 5分未満: キャッシュに含めず保留
+    if (
+        _parse_iso_datetime(topic["last_edited_time"])
+        + timedelta(seconds=config.TOPIC_PENDING_TIME)
+        > now
+    ):
+        return True  # PendingTime未満: キャッシュに含めず保留
     topic["plain_text"] = " ".join(
         block.get("plain_text", "")
         for block in topic.get("blocks", [])

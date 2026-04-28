@@ -27,6 +27,7 @@ class Config:
     USE_CACHE: bool = False
     USE_TOPIC_SLUG_CACHE: bool = False
     MAX_OGP_LEN: int = 90
+    TOPIC_PENDING_TIME: int = 1 * 60  # 1分
     FILE_NAMES: filenames.FileName = filenames.FileName()
     PAGINATE: paginate.Paginte = paginate.Paginte()
     ENV: env.Env = env.Env()
