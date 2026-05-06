@@ -520,7 +520,7 @@ def _build_topic_content(topic: dict[str, Any]) -> list[str]:
         if plain_text:
             content.append(plain_text.replace("\n", "<br>"))
         elif _is_empty_paragraph_block(block):
-            content.append("")
+            content.append("<br>")
     return content
 
 
