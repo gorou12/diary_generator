@@ -287,16 +287,13 @@ def _fetch_diary_page(page_id: str, now: datetime) -> tuple[list[dict[str, Any]]
         else:
             if not current_topic["title"]:
                 continue
-            if block_type == "paragraph" and not text_content:
-                continue
-            _update_topic_last_edited_time(current_topic, last_edited_time)
-
             if block_type == "paragraph" and text_content.startswith("#"):
                 _extend_unique(current_topic["tags"], _extract_hashtags(text_content))
                 continue
 
             normalized_block = _normalize_block(block)
             if normalized_block:
+                normalized_block["_last_edited_time"] = last_edited_time
                 current_topic["blocks"].append(normalized_block)
 
     pending = _finalize_topic(topics, current_topic, now)
@@ -329,12 +326,19 @@ def _finalize_topic(
         return False
     if "非公開" in topic.get("tags", []):
         return False  # 確定除外（保留ではない）
+    effective_blocks = _trim_trailing_empty_paragraphs(topic.get("blocks", []))
+    topic["last_edited_time"] = (
+        _latest_block_last_edited_time(effective_blocks)
+        or topic.get("last_edited_time")
+        or _now_iso()
+    )
     if (
         _parse_iso_datetime(topic["last_edited_time"])
         + timedelta(seconds=config.TOPIC_PENDING_TIME)
         > now
     ):
         return True  # PendingTime未満: キャッシュに含めず保留
+    topic["blocks"] = [_strip_block_runtime_fields(block) for block in effective_blocks]
     topic["plain_text"] = " ".join(
         block.get("plain_text", "")
         for block in topic.get("blocks", [])
@@ -342,6 +346,34 @@ def _finalize_topic(
     ).strip()
     topics.append(topic)
     return False
+
+
+def _trim_trailing_empty_paragraphs(
+    blocks: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    end = len(blocks)
+    while end > 0 and _is_empty_paragraph_block(blocks[end - 1]):
+        end -= 1
+    return blocks[:end]
+
+
+def _is_empty_paragraph_block(block: dict[str, Any]) -> bool:
+    return block.get("type") == "paragraph" and not block.get("plain_text", "").strip()
+
+
+def _latest_block_last_edited_time(blocks: list[dict[str, Any]]) -> str:
+    latest = ""
+    for block in blocks:
+        candidate = block.get("_last_edited_time", "")
+        if not candidate:
+            continue
+        if not latest or _parse_iso_datetime(candidate) > _parse_iso_datetime(latest):
+            latest = candidate
+    return latest
+
+
+def _strip_block_runtime_fields(block: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in block.items() if not key.startswith("_")}
 
 
 def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
@@ -429,15 +461,6 @@ def _extend_unique(tags: list[str], values: list[str]) -> None:
             tags.append(value)
 
 
-def _update_topic_last_edited_time(topic: dict[str, Any], candidate: str) -> None:
-    current = topic.get("last_edited_time")
-    if not current:
-        topic["last_edited_time"] = candidate
-        return
-    if _parse_iso_datetime(candidate) > _parse_iso_datetime(current):
-        topic["last_edited_time"] = candidate
-
-
 def _compose_raw_data_from_caches(
     index_cache: dict[str, Any],
     detail_cache: dict[str, Any],
@@ -496,6 +519,8 @@ def _build_topic_content(topic: dict[str, Any]) -> list[str]:
         plain_text = block.get("plain_text", "")
         if plain_text:
             content.append(plain_text.replace("\n", "<br>"))
+        elif _is_empty_paragraph_block(block):
+            content.append("")
     return content
 
 
