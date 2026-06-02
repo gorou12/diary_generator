@@ -34,17 +34,36 @@ def test_heading_3_creates_topic(monkeypatch):
     assert topics[0]["plain_text"] == "スーパーで野菜を買った"
 
 
-def test_empty_paragraph_is_not_included_in_body(monkeypatch):
+def test_empty_paragraph_in_middle_of_topic_is_kept(monkeypatch):
     topics, _ = fetch_topics(
         monkeypatch,
         [
             block("heading_3", "散歩", last_edited_time=OLD),
+            block("paragraph", "公園へ向かった", last_edited_time=OLD),
             block("paragraph", "", last_edited_time=OLD),
             block("paragraph", "公園まで歩いた", last_edited_time=OLD),
         ],
     )
 
-    assert [body["plain_text"] for body in topics[0]["blocks"]] == ["公園まで歩いた"]
+    assert contents._build_topic_content(topics[0]) == [
+        "公園へ向かった",
+        "<br>",
+        "公園まで歩いた",
+    ]
+    assert topics[0]["plain_text"] == "公園へ向かった 公園まで歩いた"
+
+
+def test_trailing_empty_paragraph_is_not_included_in_body(monkeypatch):
+    topics, _ = fetch_topics(
+        monkeypatch,
+        [
+            block("heading_3", "散歩", last_edited_time=OLD),
+            block("paragraph", "公園まで歩いた", last_edited_time=OLD),
+            block("paragraph", "", last_edited_time=OLD),
+        ],
+    )
+
+    assert contents._build_topic_content(topics[0]) == ["公園まで歩いた"]
     assert topics[0]["plain_text"] == "公園まで歩いた"
 
 
