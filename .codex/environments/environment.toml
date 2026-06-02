@@ -4,9 +4,30 @@ name = "diary_generator"
 
 [setup]
 script = '''
-cd "$CODEX_WORKTREE_PATH"
-curl -LsSf https://astral.sh/uv/install.sh | sh
-exec $SHELL -l
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Set-Location $env:CODEX_WORKTREE_PATH
+
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    $isWindowsHost = $env:OS -eq "Windows_NT"
+    $isWindowsVariable = Get-Variable IsWindows -ErrorAction SilentlyContinue
+    if ($null -ne $isWindowsVariable) {
+        $isWindowsHost = [bool]$isWindowsVariable.Value
+    }
+
+    if ($isWindowsHost) {
+        irm https://astral.sh/uv/install.ps1 | iex
+    } else {
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+    }
+
+    $cargoBin = Join-Path $HOME ".cargo\bin"
+    $localBin = Join-Path $HOME ".local\bin"
+    $pathSeparator = [System.IO.Path]::PathSeparator
+    $env:PATH = "$cargoBin$pathSeparator$localBin$pathSeparator$env:PATH"
+}
+
 uv sync
-pre-commit install
+uv run pre-commit install
 '''
