@@ -20,21 +20,32 @@ def fetch_topics(monkeypatch, blocks, *, now=NOW):
 
 
 def test_heading_3_creates_topic(monkeypatch):
+    """
+    heading_3 からトピックが作られる
+    """
+
     topics, has_pending = fetch_topics(
         monkeypatch,
         [
-            block("heading_3", "買い物", block_id="topic-shopping", last_edited_time=OLD),
+            block(
+                "heading_3", "買い物", block_id="topic-shopping", last_edited_time=OLD
+            ),
             block("paragraph", "スーパーで野菜を買った", last_edited_time=OLD),
+            block("heading_3", "散歩", block_id="topic-walking", last_edited_time=OLD),
+            block("paragraph", "公園で散歩した", last_edited_time=OLD),
         ],
     )
 
     assert has_pending is False
-    assert [topic["title"] for topic in topics] == ["買い物"]
+    assert [topic["title"] for topic in topics] == ["買い物", "散歩"]
     assert topics[0]["topic_id"] == "topic-shopping"
     assert topics[0]["plain_text"] == "スーパーで野菜を買った"
 
 
 def test_empty_paragraph_in_middle_of_topic_is_kept(monkeypatch):
+    """
+    トピック途中の空段落は空段落として残す
+    """
     topics, _ = fetch_topics(
         monkeypatch,
         [
@@ -54,6 +65,9 @@ def test_empty_paragraph_in_middle_of_topic_is_kept(monkeypatch):
 
 
 def test_trailing_empty_paragraph_is_not_included_in_body(monkeypatch):
+    """
+    トピック末尾の空段落は本文に含めない
+    """
     topics, _ = fetch_topics(
         monkeypatch,
         [
@@ -68,6 +82,9 @@ def test_trailing_empty_paragraph_is_not_included_in_body(monkeypatch):
 
 
 def test_hash_prefixed_paragraph_is_tag_not_body(monkeypatch):
+    """
+    # で始まる段落はタグとして扱われ、本文には入らない
+    """
     topics, _ = fetch_topics(
         monkeypatch,
         [
@@ -83,6 +100,9 @@ def test_hash_prefixed_paragraph_is_tag_not_body(monkeypatch):
 
 
 def test_private_topic_is_not_output(monkeypatch):
+    """
+    非公開トピックは出力しない
+    """
     topics, has_pending = fetch_topics(
         monkeypatch,
         [
@@ -98,14 +118,23 @@ def test_private_topic_is_not_output(monkeypatch):
 
 
 def test_topic_edited_less_than_five_minutes_ago_is_pending(monkeypatch):
+    """
+    編集後5分未満のトピックは出力されず has_pending_topics が True になる
+    """
     original_pending_time = config.TOPIC_PENDING_TIME
     object.__setattr__(config, "TOPIC_PENDING_TIME", 5 * 60)
     try:
         topics, has_pending = fetch_topics(
             monkeypatch,
             [
-                block("heading_3", "編集中", last_edited_time=NOW - timedelta(minutes=4)),
-                block("paragraph", "まだ編集中の本文", last_edited_time=NOW - timedelta(minutes=4)),
+                block(
+                    "heading_3", "編集中", last_edited_time=NOW - timedelta(minutes=4)
+                ),
+                block(
+                    "paragraph",
+                    "まだ編集中の本文",
+                    last_edited_time=NOW - timedelta(minutes=4),
+                ),
             ],
         )
     finally:

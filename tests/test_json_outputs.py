@@ -38,6 +38,9 @@ def diary_entry() -> DiaryEntry:
 
 
 def test_search_data_contains_body_and_hashtags(tmp_path):
+    """
+    search_data.json に本文とハッシュタグが含まれる
+    """
     original_file_names, json_dir = use_tmp_json_output(tmp_path)
     try:
         search.generate([diary_entry()])
@@ -57,6 +60,9 @@ def test_search_data_contains_body_and_hashtags(tmp_path):
 
 
 def test_calendar_data_contains_target_month_and_date_link(tmp_path):
+    """
+    calendar_data.json に対象月と日付リンクが含まれる
+    """
     original_file_names, json_dir = use_tmp_json_output(tmp_path)
     try:
         calendar.generate([diary_entry()])
