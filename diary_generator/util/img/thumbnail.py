@@ -1,6 +1,6 @@
 import os
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger
@@ -32,6 +32,9 @@ def generate_thumbnail(
             quality = config.THUMBNAIL.QUALITY
 
         with Image.open(original_path) as img:
+            # EXIF回転を適用
+            img = ImageOps.exif_transpose(img)
+
             # アスペクト比を保持してリサイズ
             img.thumbnail((max_width, max_width), Image.Resampling.LANCZOS)
 
