@@ -635,6 +635,49 @@ def test_date_detail_pagination_navigation_and_canonical(tmp_path, monkeypatch):
         assert day_nav.select_one("a[href='/dates/2026-07-13.html']") is not None
         assert day_nav.select_one("a[href='/dates/2026-07-11.html']") is not None
 
+
+def test_date_detail_with_no_topics_generates_empty_page_without_pagination(
+    tmp_path, monkeypatch
+):
+    """
+    表示可能なトピックが0件の日も従来URLを生成し、ページネーションは表示しない。
+    日付間ナビゲーションは通常どおり表示する。
+    """
+    entries = [
+        DiaryEntry(
+            date="2026-07-11",
+            date_jpn="2026年07月11日",
+            index_direction=IndexDirection.INDEX,
+            topics=[topic("前日", "prev", ["前日本文"])],
+        ),
+        DiaryEntry(
+            date="2026-07-12",
+            date_jpn="2026年07月12日",
+            index_direction=IndexDirection.INDEX,
+            topics=[],
+        ),
+        DiaryEntry(
+            date="2026-07-13",
+            date_jpn="2026年07月13日",
+            index_direction=IndexDirection.INDEX,
+            topics=[topic("翌日", "next", ["翌日本文"])],
+        ),
+    ]
+    out = generate_date_pages(tmp_path, monkeypatch, entries, per_page_topics=20)
+    page_path = out / "dates" / "2026-07-12.html"
+    parsed = soup(page_path)
+
+    assert page_path.exists()
+    assert not (out / "dates" / "2026-07-12" / "page" / "2" / "index.html").exists()
+    assert parsed.select(".topic") == []
+    assert parsed.select_one(".pagination") is None
+    assert parsed.find("link", rel="canonical")["href"] == "/dates/2026-07-12.html"
+
+    day_nav = parsed.select_one(".navigation-day")
+    assert day_nav.select_one("a[href='/dates/2026-07-13.html']") is not None
+    assert day_nav.select_one("a[href='/dates/2026-07-11.html']") is not None
+
+
 def test_topic_detail_pagination(generated_site):
     """
     トピックページのページネーションが正しい。

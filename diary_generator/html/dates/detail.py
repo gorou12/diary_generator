@@ -45,6 +45,9 @@ def generate(diary_entries: list[DiaryEntry]):
         description = _generate_description(diary_entry.topics)
         should_index = _judge_index(diary_entry.index_direction, topics)
         pages, total_pages = utilities.paginate_list(topics, per_page_topics)
+        if not pages:
+            pages = [[]]
+            total_pages = 1
 
         for idx, page_topics in enumerate(pages):
             page_num = idx + 1
