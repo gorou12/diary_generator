@@ -5,7 +5,7 @@
 
 {% for topic in topics %}
 <div class="topic">
-    <h3>{{ topic.title }} <a href="{{ topic_url(topic.title) }}" class="icon-link">🔍</a> </h3>
+    <h3 id="{{ topic_anchor_id(topic.id) }}" class="topic-heading">{{ topic.title }} <a href="{{ topic_url(topic.title) }}" class="icon-link" aria-label="{{ topic.title }}のトピックページ">🔍</a> <a href="{{ entry_permalink(topic.id) }}" class="icon-link" aria-label="{{ topic.title }}の固定URL">🔗</a></h3>
     <div class="hashtags">
         <ul>
             {% for tag in topic.hashtags %}

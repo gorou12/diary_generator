@@ -65,6 +65,7 @@ def _build_date_blocks(grouped_by_date: dict[str, list[Topic]]) -> list[dict]:
                     "hashtags": entry.hashtags,
                     "content": entry.content,
                     "content_html": entry.content_html,
+                    "id": entry.id,
                 }
                 for entry in grouped_by_date[date]
             ],

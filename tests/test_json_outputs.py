@@ -54,7 +54,8 @@ def test_search_data_contains_body_and_hashtags(tmp_path):
             "date": "2026-01-15",
             "title": "読書",
             "content": "小説を読み終えた 感想をメモした #本 #メモ",
-            "url": "dates/2026-01-15.html",
+            "topic_id": "topic-reading",
+            "url": "/entries/topic-reading/",
         }
     ]
 

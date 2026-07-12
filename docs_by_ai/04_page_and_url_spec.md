@@ -13,12 +13,15 @@
   - `/dates_2.html` 以降
 - 日付詳細:
   - `/dates/YYYY-MM-DD.html`
+  - `/dates/YYYY-MM-DD/page/{n}/`（2ページ目以降）
 - トピック一覧:
   - `/topics.html`
   - `/topics_2.html` 以降
 - トピック詳細（canonical）:
   - `/topics/{slug}/`
   - `/topics/{slug}/page/{n}/`
+- 小トピック恒久リンク:
+  - `/entries/{Topic.id}/`
 - 検索:
   - `/search.html`
 
@@ -40,6 +43,14 @@
 - 旧自動スラッグ `/topics/{auto_slug}/` -> canonical URL（slugが異なる場合）
 
 実装方式は `redirect.html`（meta refresh + JS `location.replace`）。
+
+## 小トピックアンカーと恒久リンク
+
+- トップ、日付詳細、トピック詳細に表示される小トピック見出しには `topic-{Topic.id}` のHTML IDを付与する。
+- 見出しのトピック詳細リンク（🔍）の右隣に、`/entries/{Topic.id}/` への恒久リンク（🔗）を表示する。
+- `/entries/{Topic.id}/index.html` は検索インデックス対象外（`noindex, follow`）のリダイレクトページ。
+- 転送先は日付詳細ページ内のアンカーで、1ページ目は `/dates/YYYY-MM-DD.html#topic-{Topic.id}`、2ページ目以降は `/dates/YYYY-MM-DD/page/{n}/#topic-{Topic.id}`。
+- ページ番号は日付詳細ページと同じ `DATE_DETAIL_TOPICS` による分割結果から決定するため、日付ページのページネーションと整合する。
 
 ## インデックス制御
 
@@ -66,6 +77,9 @@
   - ユニークな日付を新しい順に `DATE_LIST` 件ごと
 - トピック一覧:
   - 出現回数（見出し + ハッシュタグ）で降順、`TOPIC_LIST` 件ごと
+- 日付詳細:
+  - 1日内の小トピックを元の並び順のまま `DATE_DETAIL_TOPICS` 件ごと
+  - 1ページ目は `/dates/YYYY-MM-DD.html`、2ページ目以降は `/dates/YYYY-MM-DD/page/{n}/`
 - トピック詳細:
   - 日付ブロックを新しい順に `TOPIC_DETAIL_DATES` 件ごと
 

@@ -3,6 +3,7 @@ import json
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry
+from diary_generator.url_helpers import entry_permalink
 
 log = logger.get_logger()
 
@@ -16,8 +17,6 @@ def generate(diary_entries: list[DiaryEntry]):
 
     for diary_entry in diary_entries:
         date = diary_entry.date
-        url = f"dates/{date}.html"  # 日付ページへのリンク
-
         for topic in diary_entry.topics:
             title = topic.title
             content_text = " ".join(topic.content)  # 段落を結合して1つの文字列に
@@ -27,7 +26,13 @@ def generate(diary_entries: list[DiaryEntry]):
             full_content = f"{content_text} {hashtags}"  # 本文 + タグ
 
             search_items.append(
-                {"date": date, "title": title, "content": full_content, "url": url}
+                {
+                    "date": date,
+                    "title": title,
+                    "content": full_content,
+                    "topic_id": topic.id,
+                    "url": entry_permalink(topic.id),
+                }
             )
 
     # JSONファイルとして保存

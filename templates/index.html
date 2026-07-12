@@ -8,7 +8,7 @@
     <h3>{{ entry.date }} <a href="/dates/{{ entry.date }}.html" class="icon-link">📅</a></h3>
     {% for topic in entry.topics %}
     <div class="topic">
-        <h4>{{ topic.title }} <a href="{{ topic_url(topic.title) }}" class="icon-link">🔍</a></h4>
+        <h4 id="{{ topic_anchor_id(topic.id) }}" class="topic-heading">{{ topic.title }} <a href="{{ topic_url(topic.title) }}" class="icon-link" aria-label="{{ topic.title }}のトピックページ">🔍</a> <a href="{{ entry_permalink(topic.id) }}" class="icon-link" aria-label="{{ topic.title }}の固定URL">🔗</a></h4>
         <div class="hashtags">
             <ul>
                 {% for tag in topic.hashtags %}

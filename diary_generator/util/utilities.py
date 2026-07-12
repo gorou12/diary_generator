@@ -1,6 +1,7 @@
 from jinja2 import Environment, FileSystemLoader
 
 from diary_generator.html import sidebar_content
+from diary_generator.url_helpers import entry_permalink, topic_anchor_id
 
 env = Environment(loader=FileSystemLoader("templates"))
 
@@ -35,6 +36,8 @@ def render_template(template_name: str, context: dict, output_path: str):
     context["sidebar_content"] = sidebar_content
     # templates から topic_url(...) で呼べるようにする
     context["topic_url"] = topic_url
+    context["topic_anchor_id"] = topic_anchor_id
+    context["entry_permalink"] = entry_permalink
 
     template = env.get_template(template_name)
     output_from_parsed_template = template.render(context)

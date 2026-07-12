@@ -96,6 +96,7 @@ def generated_site(tmp_path, monkeypatch):
         html.dates.detail.generate(entries)
         html.topics.list.generate(entries)
         html.topics.detail.generate(entries, resolver)
+        html.entries.permalink.generate(entries)
         html.search.generate()
         search.generate(entries)
         calendar.generate(entries)
@@ -324,6 +325,83 @@ def test_top_page_shows_public_topics_and_links(generated_site):
     assert parsed.find("a", href="/dates/2026-01-15.html") is not None
     assert parsed.find("a", href="/topics/shopping/") is not None
 
+
+
+def test_topic_headings_have_anchors_and_permalinks(generated_site):
+    out = generated_site.output_dir
+
+    for rel_path, heading_name, topic_id in [
+        ("index.html", "買い物 #生活", "topic-shopping"),
+        ("dates/2026-01-15.html", "買い物 #生活", "topic-shopping"),
+        ("topics/shopping/index.html", "買い物 #生活", "topic-shopping"),
+    ]:
+        parsed = soup(out / rel_path)
+        heading = parsed.find(id=f"topic-{topic_id}")
+        assert heading is not None
+        assert heading.name in {"h3", "h4"}
+        assert heading.get("class") == ["topic-heading"]
+        links = heading.find_all("a", class_="icon-link")
+        assert [link.get_text(strip=True) for link in links[-2:]] == ["🔍", "🔗"]
+        assert links[-2]["href"] == generated_site.resolver.url_for_title(heading_name)
+        assert links[-1]["href"] == f"/entries/{topic_id}/"
+        assert links[-1]["aria-label"] == f"{heading_name}の固定URL"
+
+    parsed = soup(out / "dates" / "2026-01-15.html")
+    ids = [tag["id"] for tag in parsed.find_all(id=True) if tag["id"].startswith("topic-")]
+    assert len(ids) == len(set(ids))
+
+
+def test_entry_permalink_pages_redirect_to_date_topic_anchor(generated_site):
+    out = generated_site.output_dir
+    permalink = out / "entries" / "topic-shopping" / "index.html"
+    parsed = soup(permalink)
+
+    assert permalink.exists()
+    assert parsed.find("meta", attrs={"name": "robots"})["content"] == "noindex, follow"
+    assert "/dates/2026-01-15.html#topic-topic-shopping" in parsed.find(
+        "meta", attrs={"http-equiv": "refresh"}
+    )["content"]
+    assert parsed.find("a", href="/dates/2026-01-15.html#topic-topic-shopping") is not None
+    assert parsed.find("link", rel="canonical")["href"] == "/entries/topic-shopping/"
+    assert not (out / "entries" / "topic-private" / "index.html").exists()
+
+
+def test_entry_permalink_redirect_uses_second_date_page_for_overflow(tmp_path, monkeypatch):
+    output_dir = tmp_path / "output"
+    for path in [output_dir, output_dir / "dates"]:
+        path.mkdir(parents=True, exist_ok=True)
+    original_file_names = config.FILE_NAMES
+    original_paginate = config.PAGINATE
+    object.__setattr__(
+        config,
+        "FILE_NAMES",
+        SimpleNamespace(
+            OUTPUT_BASE_DIR_NAME=f"{output_dir}{os.sep}",
+            OUTPUT_DATES_DIR_NAME=f"{output_dir / 'dates'}{os.sep}",
+        ),
+    )
+    object.__setattr__(config, "PAGINATE", SimpleNamespace(DATE_DETAIL_TOPICS=2))
+    entries = [
+        DiaryEntry(
+            date="2026-02-01",
+            date_jpn="2026年02月01日",
+            index_direction=IndexDirection.INDEX,
+            topics=[topic(f"t{i}", f"id-{i}", ["body"]) for i in range(3)],
+        )
+    ]
+    try:
+        html.dates.detail.generate(entries)
+        html.entries.permalink.generate(entries)
+    finally:
+        object.__setattr__(config, "FILE_NAMES", original_file_names)
+        object.__setattr__(config, "PAGINATE", original_paginate)
+
+    parsed_date = soup(output_dir / "dates" / "2026-02-01" / "page" / "2" / "index.html")
+    assert parsed_date.find(id="topic-id-2") is not None
+    parsed_permalink = soup(output_dir / "entries" / "id-2" / "index.html")
+    assert "/dates/2026-02-01/page/2/#topic-id-2" in parsed_permalink.find(
+        "meta", attrs={"http-equiv": "refresh"}
+    )["content"]
 
 def test_date_page_shows_only_topics_for_that_date(generated_site):
     """
