@@ -7,3 +7,4 @@ class Paginte:
     TOPIC_LIST: int = 20
     DATE_LIST: int = 30
     TOPIC_DETAIL_DATES: int = 20
+    DATE_DETAIL_TOPICS: int = 20
