@@ -25,12 +25,14 @@ def _build_pagination_html(date: str, page_num: int, total_pages: int) -> str:
     if total_pages <= 1:
         return ""
 
-    pagination = ""
+    pagination = '<span class="empty"></span>'
     if page_num > 1:
-        pagination += f'<a href="{_date_url(date, page_num - 1)}">« 前へ</a> '
+        pagination = f'<a href="{_date_url(date, page_num - 1)}">« 前へ</a>'
     pagination += f"<span>{page_num}/{total_pages}</span>"
     if page_num < total_pages:
-        pagination += f' <a href="{_date_url(date, page_num + 1)}">次へ »</a>'
+        pagination += f'<a href="{_date_url(date, page_num + 1)}">次へ »</a>'
+    else:
+        pagination += '<span class="empty"></span>'
     return pagination
 
 
@@ -100,7 +102,9 @@ def _generate_description(topics: list[Topic]) -> str:
         if topic.title[0] == "夢":
             continue
         description += topic.title + " " + "".join(topic.content) + " "
-        description = re.sub(r"</?[a-zA-Z0-9][a-zA-Z0-9 '\"-_.@&$%/]+>", "", description)
+        description = re.sub(
+            r"</?[a-zA-Z0-9][a-zA-Z0-9 '\"-_.@&$%/]+>", "", description
+        )
         description = re.sub(
             r"https?://[a-zA-Z0-9!\?/\+\-_~=;\.,\*&@#$%\(\)'\[\]]+", "", description
         )
