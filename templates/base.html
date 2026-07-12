@@ -22,6 +22,9 @@
     <meta property="og:locale" content="ja_JP">
     <meta name="description" content="{{ description }}">
     <title>{{ title }}</title>
+    {% if canonical_url %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% endif %}
     <link rel="icon" href="/src/favicon.ico">
     <link rel="stylesheet" href="/src/style.css">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
