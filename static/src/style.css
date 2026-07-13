@@ -480,3 +480,7 @@ html.dark .calendar a:hover {
     }
 }
 
+
+.topic-heading {
+    scroll-margin-top: 1rem;
+}

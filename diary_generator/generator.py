@@ -19,6 +19,7 @@ def generate_all():
     html.dates.detail.generate(diary_entries)
     html.topics.list.generate(diary_entries)
     html.topics.detail.generate(diary_entries, resolver)
+    html.entries.permalink.generate(diary_entries)
     html.search.generate()
 
     json.search.generate(diary_entries)

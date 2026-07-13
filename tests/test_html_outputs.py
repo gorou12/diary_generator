@@ -96,6 +96,7 @@ def generated_site(tmp_path, monkeypatch):
         html.dates.detail.generate(entries)
         html.topics.list.generate(entries)
         html.topics.detail.generate(entries, resolver)
+        html.entries.permalink.generate(entries)
         html.search.generate()
         search.generate(entries)
         calendar.generate(entries)
@@ -149,7 +150,9 @@ def diary_entries(monkeypatch) -> list[DiaryEntry]:
                     "画像",
                     "topic-image",
                     ["写真を載せた"],
-                    ['<img class="embedimg" src="/images/public-photo.jpg" alt="写真">'],
+                    [
+                        '<img class="embedimg" src="/images/public-photo.jpg" alt="写真">'
+                    ],
                 ),
                 topic("旧トピック名", "topic-legacy", ["旧URLから新URLへ"]),
             ],
@@ -183,7 +186,9 @@ def diary_entries(monkeypatch) -> list[DiaryEntry]:
             date="2026-01-12",
             date_jpn="2026年01月12日",
             index_direction=IndexDirection.INDEX,
-            topics=[topic("料理", "topic-cooking", ["味噌汁を作った"], hashtags=["食事"])],
+            topics=[
+                topic("料理", "topic-cooking", ["味噌汁を作った"], hashtags=["食事"])
+            ],
         ),
         DiaryEntry(
             date="2026-01-11",
@@ -199,7 +204,9 @@ def public_topics_from_notion_blocks(monkeypatch) -> tuple[list[Topic], bool]:
     old = (now - timedelta(minutes=10)).isoformat()
     pending = now.isoformat()
     blocks = [
-        block("heading_3", "買い物 #生活", block_id="topic-shopping", last_edited_time=old),
+        block(
+            "heading_3", "買い物 #生活", block_id="topic-shopping", last_edited_time=old
+        ),
         block("paragraph", "スーパーで野菜を買った", last_edited_time=old),
         block("paragraph", "", last_edited_time=old),
         block("paragraph", "夕飯の材料を選んだ", last_edited_time=old),
@@ -217,7 +224,9 @@ def public_topics_from_notion_blocks(monkeypatch) -> tuple[list[Topic], bool]:
                 "external": {"url": "https://example.com/private.jpg"},
             },
         },
-        block("heading_3", "編集中", block_id="topic-pending", last_edited_time=pending),
+        block(
+            "heading_3", "編集中", block_id="topic-pending", last_edited_time=pending
+        ),
         block("paragraph", "まだ出さない", last_edited_time=pending),
     ]
     monkeypatch.setattr(
@@ -325,6 +334,109 @@ def test_top_page_shows_public_topics_and_links(generated_site):
     assert parsed.find("a", href="/topics/shopping/") is not None
 
 
+def test_topic_headings_have_anchors_and_permalinks(generated_site):
+    """
+    トップ・日付詳細・トピック詳細の小トピック見出しを検証する。
+    各見出しに topic-{id} のアンカー、topic-heading クラス、既存の🔍リンク、
+    /entries/{id}/ への🔗固定URLリンクが付与され、同一日付ページ内でアンカーIDが重複しないことを確認する。
+    """
+    out = generated_site.output_dir
+
+    for rel_path, heading_name, topic_id in [
+        ("index.html", "買い物 #生活", "topic-shopping"),
+        ("dates/2026-01-15.html", "買い物 #生活", "topic-shopping"),
+        ("topics/shopping/index.html", "買い物 #生活", "topic-shopping"),
+    ]:
+        parsed = soup(out / rel_path)
+        heading = parsed.find(id=f"topic-{topic_id}")
+        assert heading is not None
+        assert heading.name in {"h3", "h4"}
+        assert heading.get("class") == ["topic-heading"]
+        links = heading.find_all("a", class_="icon-link")
+        assert [link.get_text(strip=True) for link in links[-2:]] == ["🔍", "🔗"]
+        assert links[-2]["href"] == generated_site.resolver.url_for_title(heading_name)
+        assert links[-1]["href"] == f"/entries/{topic_id}/"
+        assert links[-1]["aria-label"] == f"{heading_name}の固定URL"
+
+    parsed = soup(out / "dates" / "2026-01-15.html")
+    ids = [
+        tag["id"] for tag in parsed.find_all(id=True) if tag["id"].startswith("topic-")
+    ]
+    assert len(ids) == len(set(ids))
+
+
+def test_entry_permalink_pages_redirect_to_date_topic_anchor(generated_site):
+    """
+    公開小トピックごとの恒久リンクページを検証する。
+    /entries/{id}/index.html が noindex のリダイレクトページとして生成され、
+    1ページ目の日付詳細内アンカーへ転送されること、フォールバックリンクとcanonicalを持つこと、
+    非公開トピックの恒久リンクページが生成されないことを確認する。
+    """
+    out = generated_site.output_dir
+    permalink = out / "entries" / "topic-shopping" / "index.html"
+    parsed = soup(permalink)
+
+    assert permalink.exists()
+    assert parsed.find("meta", attrs={"name": "robots"})["content"] == "noindex, follow"
+    assert (
+        "/dates/2026-01-15.html#topic-topic-shopping"
+        in parsed.find("meta", attrs={"http-equiv": "refresh"})["content"]
+    )
+    assert (
+        parsed.find("a", href="/dates/2026-01-15.html#topic-topic-shopping") is not None
+    )
+    assert parsed.find("link", rel="canonical")["href"] == "/entries/topic-shopping/"
+    assert not (out / "entries" / "topic-private" / "index.html").exists()
+
+
+def test_entry_permalink_redirect_uses_second_date_page_for_overflow(
+    tmp_path, monkeypatch
+):
+    """
+    DATE_DETAIL_TOPICS の境界をまたぐ小トピックの恒久リンク転送先を検証する。
+    日付詳細ページと同じ分割結果を使って2ページ目の小トピックにアンカーが付き、
+    恒久リンクページが /dates/YYYY-MM-DD/page/2/#topic-{id} へ転送することを確認する。
+    """
+    output_dir = tmp_path / "output"
+    for path in [output_dir, output_dir / "dates"]:
+        path.mkdir(parents=True, exist_ok=True)
+    original_file_names = config.FILE_NAMES
+    original_paginate = config.PAGINATE
+    object.__setattr__(
+        config,
+        "FILE_NAMES",
+        SimpleNamespace(
+            OUTPUT_BASE_DIR_NAME=f"{output_dir}{os.sep}",
+            OUTPUT_DATES_DIR_NAME=f"{output_dir / 'dates'}{os.sep}",
+        ),
+    )
+    object.__setattr__(config, "PAGINATE", SimpleNamespace(DATE_DETAIL_TOPICS=2))
+    entries = [
+        DiaryEntry(
+            date="2026-02-01",
+            date_jpn="2026年02月01日",
+            index_direction=IndexDirection.INDEX,
+            topics=[topic(f"t{i}", f"id-{i}", ["body"]) for i in range(3)],
+        )
+    ]
+    try:
+        html.dates.detail.generate(entries)
+        html.entries.permalink.generate(entries)
+    finally:
+        object.__setattr__(config, "FILE_NAMES", original_file_names)
+        object.__setattr__(config, "PAGINATE", original_paginate)
+
+    parsed_date = soup(
+        output_dir / "dates" / "2026-02-01" / "page" / "2" / "index.html"
+    )
+    assert parsed_date.find(id="topic-id-2") is not None
+    parsed_permalink = soup(output_dir / "entries" / "id-2" / "index.html")
+    assert (
+        "/dates/2026-02-01/page/2/#topic-id-2"
+        in parsed_permalink.find("meta", attrs={"http-equiv": "refresh"})["content"]
+    )
+
+
 def test_date_page_shows_only_topics_for_that_date(generated_site):
     """
     日付ページにその日のトピックだけが表示される。
@@ -348,7 +460,9 @@ def test_topic_page_shows_only_target_topic_across_dates(generated_site):
     assert parsed.find("a", href="/dates/2026-01-15.html") is not None
     assert_not_contains_any(topic_page, "リンク", "画像", "散歩", "味噌汁")
 
-    page2 = generated_site.output_dir / "topics" / "shopping" / "page" / "2" / "index.html"
+    page2 = (
+        generated_site.output_dir / "topics" / "shopping" / "page" / "2" / "index.html"
+    )
     assert_contains(page2, "買い物 #生活", "翌日も買い物した")
     assert soup(page2).find("a", href="/dates/2026-01-14.html") is not None
 
@@ -393,7 +507,9 @@ def test_internal_links_are_not_broken(generated_site):
                 continue
             target = resolve_internal_href(generated_site.output_dir, path, href)
             if not target.exists():
-                missing.append((path.relative_to(generated_site.output_dir), href, target))
+                missing.append(
+                    (path.relative_to(generated_site.output_dir), href, target)
+                )
 
     assert missing == []
 
@@ -465,7 +581,9 @@ def test_private_hashtag_page_is_not_generated_or_linked(generated_site):
     assert not (out / "topics" / "非公開.html").exists()
     assert "非公開" not in text(out / "topics.html")
     for path in all_html(out):
-        assert not any("非公開" in (a.get("href") or "") for a in soup(path).find_all("a"))
+        assert not any(
+            "非公開" in (a.get("href") or "") for a in soup(path).find_all("a")
+        )
 
 
 def test_heading_hashtag_tag_paragraph_and_empty_paragraph_rendering(generated_site):
@@ -480,10 +598,14 @@ def test_heading_hashtag_tag_paragraph_and_empty_paragraph_rendering(generated_s
     assert "買い物 #生活" in parsed.get_text(" ", strip=True)
     assert parsed.find("a", href="/topics/life/") is not None
     assert "#生活 #食事" not in parsed.get_text("\n", strip=True)
-    assert content.find("p", string=lambda value: value and "#生活 #食事" in value) is None
+    assert (
+        content.find("p", string=lambda value: value and "#生活 #食事" in value) is None
+    )
 
     paragraphs = content.find_all("p")
-    assert any(p.find("br") is not None and not p.get_text(strip=True) for p in paragraphs)
+    assert any(
+        p.find("br") is not None and not p.get_text(strip=True) for p in paragraphs
+    )
     assert paragraphs[-1].get_text(strip=True) == "夕飯の材料を選んだ"
 
 
@@ -503,8 +625,6 @@ def test_linked_text_and_image_blocks_render(generated_site):
     assert image is not None
     assert image["src"]
     assert "private.jpg" not in page.read_text(encoding="utf-8")
-
-
 
 
 def generate_date_pages(tmp_path, monkeypatch, entries, per_page_topics):
@@ -540,7 +660,9 @@ def generate_date_pages(tmp_path, monkeypatch, entries, per_page_topics):
     return output_dir
 
 
-def test_date_detail_without_pagination_keeps_legacy_url_and_hides_pagination(generated_site):
+def test_date_detail_without_pagination_keeps_legacy_url_and_hides_pagination(
+    generated_site,
+):
     """
     日付詳細が1ページに収まる場合は従来URLだけを生成し、ページネーションを表示しない。
     """
@@ -553,7 +675,9 @@ def test_date_detail_without_pagination_keeps_legacy_url_and_hides_pagination(ge
     assert page.find("link", rel="canonical")["href"] == "/dates/2026-01-15.html"
 
 
-def test_date_detail_pagination_splits_topics_and_preserves_order(tmp_path, monkeypatch):
+def test_date_detail_pagination_splits_topics_and_preserves_order(
+    tmp_path, monkeypatch
+):
     """
     日付詳細のトピックを設定件数ごとに分割し、重複・欠落なく元の順序で表示する。
     """
@@ -562,7 +686,9 @@ def test_date_detail_pagination_splits_topics_and_preserves_order(tmp_path, monk
             date="2026-07-12",
             date_jpn="2026年07月12日",
             index_direction=IndexDirection.INDEX,
-            topics=[topic(f"トピック{i}", f"topic-{i}", [f"本文{i}"]) for i in range(1, 5)],
+            topics=[
+                topic(f"トピック{i}", f"topic-{i}", [f"本文{i}"]) for i in range(1, 5)
+            ],
         )
     ]
     out = generate_date_pages(tmp_path, monkeypatch, entries, per_page_topics=3)
@@ -572,11 +698,22 @@ def test_date_detail_pagination_splits_topics_and_preserves_order(tmp_path, monk
     assert page1_path.exists()
     assert page2_path.exists()
 
-    page1_topics = [h3.get_text(" ", strip=True).split()[0] for h3 in soup(page1_path).select(".topic h3")]
-    page2_topics = [h3.get_text(" ", strip=True).split()[0] for h3 in soup(page2_path).select(".topic h3")]
+    page1_topics = [
+        h3.get_text(" ", strip=True).split()[0]
+        for h3 in soup(page1_path).select(".topic h3")
+    ]
+    page2_topics = [
+        h3.get_text(" ", strip=True).split()[0]
+        for h3 in soup(page2_path).select(".topic h3")
+    ]
     assert page1_topics == ["トピック1", "トピック2", "トピック3"]
     assert page2_topics == ["トピック4"]
-    assert page1_topics + page2_topics == ["トピック1", "トピック2", "トピック3", "トピック4"]
+    assert page1_topics + page2_topics == [
+        "トピック1",
+        "トピック2",
+        "トピック3",
+        "トピック4",
+    ]
 
 
 def test_date_detail_pagination_navigation_and_canonical(tmp_path, monkeypatch):
@@ -594,7 +731,9 @@ def test_date_detail_pagination_navigation_and_canonical(tmp_path, monkeypatch):
             date="2026-07-12",
             date_jpn="2026年07月12日",
             index_direction=IndexDirection.INDEX,
-            topics=[topic(f"トピック{i}", f"topic-{i}", [f"本文{i}"]) for i in range(1, 5)],
+            topics=[
+                topic(f"トピック{i}", f"topic-{i}", [f"本文{i}"]) for i in range(1, 5)
+            ],
         ),
         DiaryEntry(
             date="2026-07-13",
@@ -615,15 +754,21 @@ def test_date_detail_pagination_navigation_and_canonical(tmp_path, monkeypatch):
     page4_pagination = pages[2].select_one(".pagination")
 
     assert page1_pagination.get_text(" ", strip=True) == "1/4 次へ »"
-    assert page1_pagination.select_one("a[href='/dates/2026-07-12/page/2/']") is not None
+    assert (
+        page1_pagination.select_one("a[href='/dates/2026-07-12/page/2/']") is not None
+    )
     assert "前へ" not in page1_pagination.get_text(" ", strip=True)
 
     assert page2_pagination.get_text(" ", strip=True) == "« 前へ 2/4 次へ »"
     assert page2_pagination.select_one("a[href='/dates/2026-07-12.html']") is not None
-    assert page2_pagination.select_one("a[href='/dates/2026-07-12/page/3/']") is not None
+    assert (
+        page2_pagination.select_one("a[href='/dates/2026-07-12/page/3/']") is not None
+    )
 
     assert page4_pagination.get_text(" ", strip=True) == "« 前へ 4/4"
-    assert page4_pagination.select_one("a[href='/dates/2026-07-12/page/3/']") is not None
+    assert (
+        page4_pagination.select_one("a[href='/dates/2026-07-12/page/3/']") is not None
+    )
     assert "次へ" not in page4_pagination.get_text(" ", strip=True)
 
     assert pages[0].find("link", rel="canonical")["href"] == "/dates/2026-07-12.html"
@@ -689,7 +834,9 @@ def test_topic_detail_pagination(generated_site):
 
     assert (out / "index.html").exists()
     assert (out / "page" / "2" / "index.html").exists()
-    assert page1.select_one(".pagination a[href='/topics/shopping/page/2/']") is not None
+    assert (
+        page1.select_one(".pagination a[href='/topics/shopping/page/2/']") is not None
+    )
     assert page1.select_one(".pagination a[href='/topics/shopping/']") is None
     assert page2.select_one(".pagination a[href='/topics/shopping/']") is not None
     assert page2.select_one(".pagination a[href='/topics/shopping/page/3/']") is None
@@ -699,7 +846,13 @@ def test_topic_detail_pagination(generated_site):
     ("first", "second", "last", "second_prev", "second_next"),
     [
         ("index.html", "index_2.html", "index_4.html", "index.html", "index_3.html"),
-        ("topics.html", "topics_2.html", "topics_4.html", "topics.html", "topics_3.html"),
+        (
+            "topics.html",
+            "topics_2.html",
+            "topics_4.html",
+            "topics.html",
+            "topics_3.html",
+        ),
         ("dates.html", "dates_2.html", "dates_3.html", "dates.html", "dates_3.html"),
     ],
 )
@@ -713,8 +866,14 @@ def test_top_topics_and_dates_pagination(
     out = generated_site.output_dir
 
     assert soup(out / first).select_one(f".pagination a[href='{second}']") is not None
-    assert soup(out / second).select_one(f".pagination a[href='{second_prev}']") is not None
-    assert soup(out / second).select_one(f".pagination a[href='{second_next}']") is not None
+    assert (
+        soup(out / second).select_one(f".pagination a[href='{second_prev}']")
+        is not None
+    )
+    assert (
+        soup(out / second).select_one(f".pagination a[href='{second_next}']")
+        is not None
+    )
     last_pagination = soup(out / last).select_one(".pagination")
     assert last_pagination is not None
     assert "次へ" not in last_pagination.get_text(" ", strip=True)
@@ -726,7 +885,9 @@ def test_search_data_urls_exist_and_titles_match_target_html(generated_site):
     検索結果URLから実在HTMLに到達でき、検索タイトルがリンク先HTMLにも表示されることを確認する。
     """
     out = generated_site.output_dir
-    search_items = json.loads((out / "json" / "search_data.json").read_text(encoding="utf-8"))
+    search_items = json.loads(
+        (out / "json" / "search_data.json").read_text(encoding="utf-8")
+    )
 
     assert search_items
     for item in search_items:
@@ -767,10 +928,14 @@ def test_legacy_topic_redirect_exists_and_new_links_use_slug_urls(generated_site
     parsed_redirect = soup(redirect_path)
 
     assert redirect_path.exists()
-    assert parsed_redirect.find("link", rel="canonical")["href"] == "/topics/renamed-topic/"
-    assert "/topics/renamed-topic/" in parsed_redirect.find("meta", attrs={"http-equiv": "refresh"})[
-        "content"
-    ]
+    assert (
+        parsed_redirect.find("link", rel="canonical")["href"]
+        == "/topics/renamed-topic/"
+    )
+    assert (
+        "/topics/renamed-topic/"
+        in parsed_redirect.find("meta", attrs={"http-equiv": "refresh"})["content"]
+    )
 
     old_topic_link_pattern = re.compile(r"/topics/[^/]+\.html$")
     for path in all_html(out):
@@ -778,6 +943,7 @@ def test_legacy_topic_redirect_exists_and_new_links_use_slug_urls(generated_site
             href = anchor["href"]
             assert not old_topic_link_pattern.search(href)
 
-    assert soup(out / "dates" / "2026-01-15.html").find(
-        "a", href="/topics/renamed-topic/"
-    ) is not None
+    assert (
+        soup(out / "dates" / "2026-01-15.html").find("a", href="/topics/renamed-topic/")
+        is not None
+    )

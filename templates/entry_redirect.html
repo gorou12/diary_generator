@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex, follow">
+  <meta http-equiv="refresh" content="0; url={{ dest_url }}">
+  <meta name="description" content="{{ description }}">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:locale" content="ja_JP">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <title>{{ title }} - {{ date }}</title>
+</head>
+<body>
+  <p>転送先URL: <a href="{{ dest_url }}">{{ dest_url }}</a></p>
+  <script>location.replace("{{ dest_url }}");</script>
+</body>
+</html>

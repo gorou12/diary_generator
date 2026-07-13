@@ -9,7 +9,7 @@
     
     {% for entry in topic_entry.entries %}
     <div class="content-of-day">
-        <h4>{{ entry.title }} <a href="{{ topic_url(entry.title) }}" class="icon-link">🔍</a></h4>
+        <h4 id="{{ topic_anchor_id(entry.id) }}" class="topic-heading">{{ entry.title }} <a href="{{ topic_url(entry.title) }}" class="icon-link" aria-label="{{ entry.title }}のトピックページ">🔍</a> <a href="{{ entry_permalink(entry.id) }}" class="icon-link" aria-label="{{ entry.title }}の固定URL">🔗</a></h4>
         <div class="hashtags">
             <ul>
                 {% for tag in entry.hashtags %}

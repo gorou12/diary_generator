@@ -23,7 +23,8 @@
     "date": "YYYY-MM-DD",
     "title": "トピック名",
     "content": "本文結合文字列 #tag1 #tag2",
-    "url": "dates/YYYY-MM-DD.html"
+    "topic_id": "Notion見出しブロックID",
+    "url": "/entries/{Topic.id}/"
   }
 ]
 ```
@@ -31,6 +32,7 @@
 ## 備考
 
 - `content` は表示HTMLではなくプレーンな結合文字列
+- `url` は小トピック恒久リンクを指し、クリック後は日付詳細ページ内の該当アンカーへ転送される
 - クライアント側で `title + content` の部分一致検索を行う
 
 ## 2. `calendar_data.json`

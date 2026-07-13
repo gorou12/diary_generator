@@ -4,15 +4,14 @@ import re
 from diary_generator.config.configuration import config
 from diary_generator.logger import logger
 from diary_generator.models import DiaryEntry, IndexDirection, Topic
+from diary_generator.url_helpers import date_url
 from diary_generator.util import utilities
 
 log = logger.get_logger()
 
 
 def _date_url(date: str, page_num: int = 1) -> str:
-    if page_num <= 1:
-        return f"/dates/{date}.html"
-    return f"/dates/{date}/page/{page_num}/"
+    return date_url(date, page_num)
 
 
 def _date_output_path(dates_dir: str, date: str, page_num: int = 1) -> str:
