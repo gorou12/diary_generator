@@ -10,13 +10,18 @@ def create(contents: list[str]) -> list[str]:
 
 
 def _sub_link_card(text: str) -> str:
-    html_tags: list[str] = []
+    preserved_html: list[str] = []
 
-    def preserve_html_tag(match):
-        html_tags.append(match.group(0))
-        return f"__DIARY_GENERATOR_HTML_TAG_{len(html_tags) - 1}__"
+    def preserve_html(match):
+        preserved_html.append(match.group(0))
+        return f"__DIARY_GENERATOR_HTML_{len(preserved_html) - 1}__"
 
-    preserved_text = re.sub(r"<[^>]+>", preserve_html_tag, text)
+    preserved_text = re.sub(
+        r"<a\b[^>]*>.*?</a>|<[^>]+>",
+        preserve_html,
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     url_pattern = re.compile(r'(https?://[^\s<>"\'\)\]]+)')
 
     def replace_url(match):
@@ -45,6 +50,6 @@ def _sub_link_card(text: str) -> str:
                     return f'<a href="{url}" target="_blank">{url}</a>'
 
     rendered = url_pattern.sub(replace_url, preserved_text)
-    for index, html_tag in enumerate(html_tags):
-        rendered = rendered.replace(f"__DIARY_GENERATOR_HTML_TAG_{index}__", html_tag)
+    for index, html in enumerate(preserved_html):
+        rendered = rendered.replace(f"__DIARY_GENERATOR_HTML_{index}__", html)
     return rendered

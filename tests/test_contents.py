@@ -298,6 +298,20 @@ def test_linkcard_keeps_rich_text_anchor_intact(monkeypatch):
     assert contents.linkcard.create(content) == content
 
 
+
+def test_linkcard_keeps_anchor_with_url_text_intact(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = ['<a href="https://example.com">https://example.com</a>']
+
+    assert contents.linkcard.create(content) == content
+
+
+def test_linkcard_keeps_anchor_with_link_label_intact(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = ['<a href="https://example.com">リンク名</a>']
+
+    assert contents.linkcard.create(content) == content
+
 def test_linkcard_does_not_convert_image_src_url(monkeypatch):
     monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
     content = ['<img class="callout-icon" alt="" src="https://example.com/icon.png">']
