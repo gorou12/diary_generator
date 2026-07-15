@@ -174,7 +174,6 @@ def test_render_supported_blocks(monkeypatch):
             "type": "image",
             "block_id": "image-1",
             "image": {"url": "https://example.com/image.png"},
-            "caption": [{"text": "画像の説明", "annotations": {}}],
         },
         {"type": "unsupported", "plain_text": "フォールバック"},
         {"type": "unsupported"},
@@ -192,7 +191,7 @@ def test_render_supported_blocks(monkeypatch):
         "<hr>",
         "<h4>小見出し</h4>",
         '<div class="callout"><span class="callout-icon">💡</span><div>注意</div></div>',
-        "<figure><img><figcaption>画像の説明</figcaption></figure>",
+        "<img>",
         "<p>フォールバック</p>",
     ]
     assert calls == [("image-1", "https://example.com/image.png")]
@@ -223,6 +222,26 @@ def test_render_rich_text_and_escape_html():
     )
 
 
+def test_render_rich_text_validates_link_schemes_and_escapes_values():
+    rich_text = [
+        {"text": "https", "href": "https://example.com/?q=<x>", "annotations": {}},
+        {"text": " http", "href": "http://example.com", "annotations": {}},
+        {"text": " mail", "href": "mailto:test@example.com", "annotations": {}},
+        {"text": " js", "href": "javascript:alert(1)", "annotations": {}},
+        {"text": " data <tag>", "href": "data:text/html,<p>x</p>", "annotations": {}},
+    ]
+
+    rendered = contents.render_block({"type": "paragraph", "rich_text": rich_text})
+
+    assert rendered == (
+        '<p><a href="https://example.com/?q=&lt;x&gt;" target="_blank" '
+        'rel="noopener noreferrer">https</a>'
+        '<a href="http://example.com" target="_blank" rel="noopener noreferrer"> http</a>'
+        '<a href="mailto:test@example.com" target="_blank" rel="noopener noreferrer"> mail</a>'
+        " js data &lt;tag&gt;</p>"
+    )
+
+
 def test_normalize_block_preserves_type_specific_display_data():
     todo = {
         "id": "todo-1",
@@ -240,14 +259,6 @@ def test_normalize_block_preserves_type_specific_display_data():
         "image": {
             "type": "external",
             "external": {"url": "https://example.com/a.png"},
-            "caption": [
-                {
-                    "type": "text",
-                    "plain_text": "cap",
-                    "text": {"content": "cap"},
-                    "annotations": {},
-                }
-            ],
         },
     }
 
@@ -256,9 +267,11 @@ def test_normalize_block_preserves_type_specific_display_data():
         "type": "emoji",
         "emoji": "📌",
     }
-    assert contents._normalize_block(image)["caption"] == [
-        {"type": "text", "text": "cap", "href": None, "annotations": {}}
-    ]
+    assert contents._normalize_block(image) == {
+        "block_id": "image-1",
+        "type": "image",
+        "image": {"url": "https://example.com/a.png", "source_type": "external"},
+    }
 
 
 def test_cache_schema_version_changed_for_old_cache_regeneration():
@@ -283,3 +296,61 @@ def test_linkcard_keeps_rich_text_anchor_intact(monkeypatch):
     ]
 
     assert contents.linkcard.create(content) == content
+
+
+def test_linkcard_does_not_convert_image_src_url(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = ['<img class="callout-icon" alt="" src="https://example.com/icon.png">']
+
+    assert contents.linkcard.create(content) == content
+
+
+def test_linkcard_converts_standalone_url_outside_html_tags(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+
+    assert contents.linkcard.create(["https://example.com/page"]) == [
+        '<a href="https://example.com/page" target="_blank">https://example.com/page</a>'
+    ]
+
+
+def test_linkcard_handles_mixed_html_tag_and_plain_urls(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = [
+        '<img class="callout-icon" alt="" src="https://example.com/icon.png"> '
+        "https://example.com/page"
+    ]
+
+    assert contents.linkcard.create(content) == [
+        '<img class="callout-icon" alt="" src="https://example.com/icon.png"> '
+        '<a href="https://example.com/page" target="_blank">https://example.com/page</a>'
+    ]
+
+
+def test_render_callout_icon_falls_back_for_unknown_icon_format():
+    assert contents.render_block(
+        {
+            "type": "callout",
+            "plain_text": "本文のみ",
+            "icon": {"type": "custom", "value": {"unexpected": True}},
+        }
+    ) == '<div class="callout"><div>本文のみ</div></div>'
+
+
+def test_render_callout_icon_validates_image_url_scheme():
+    assert contents.render_block(
+        {
+            "type": "callout",
+            "plain_text": "本文",
+            "icon": {"type": "external", "url": "https://example.com/icon.png"},
+        }
+    ) == (
+        '<div class="callout"><img class="callout-icon" alt="" '
+        'src="https://example.com/icon.png"><div>本文</div></div>'
+    )
+    assert contents.render_block(
+        {
+            "type": "callout",
+            "plain_text": "本文",
+            "icon": {"type": "external", "url": "javascript:alert(1)"},
+        }
+    ) == '<div class="callout"><div>本文</div></div>'

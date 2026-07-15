@@ -5,6 +5,7 @@ import re
 import typing
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from urllib.parse import urlparse
 
 from diary_generator import notion_api
 from diary_generator.config.configuration import config
@@ -392,13 +393,9 @@ def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
         elif image_type == "file":
             image_url = image.get("file", {}).get("url", "")
 
-        caption = _normalize_rich_text_items(image.get("caption", []))
         normalized = {"block_id": block_id, "type": block_type}
         if image_url:
             normalized["image"] = {"url": image_url, "source_type": image_type}
-        if caption:
-            normalized["caption"] = caption
-            normalized["plain_text"] = "".join(item.get("text", "") for item in caption)
         return normalized
 
     block_data = block.get(block_type, {})
@@ -626,10 +623,14 @@ def _render_rich_text_item(item: dict[str, Any]) -> str:
     if annotations.get("underline"):
         text = f"<u>{text}</u>"
     href = item.get("href")
-    if href:
+    if href and _is_allowed_url_scheme(str(href)):
         escaped_href = html.escape(str(href), quote=True)
         text = f'<a href="{escaped_href}" target="_blank" rel="noopener noreferrer">{text}</a>'
     return text
+
+
+def _is_allowed_url_scheme(url: str) -> bool:
+    return urlparse(url).scheme.lower() in {"https", "http", "mailto"}
 
 
 def _render_image_block(block: dict[str, Any]) -> str | None:
@@ -638,11 +639,7 @@ def _render_image_block(block: dict[str, Any]) -> str | None:
     block_id = block.get("block_id")
     if not image_url or not block_id:
         return None
-    image_html = generate_image_tag(block_id, image_url)
-    caption = "".join(_render_rich_text_item(item) for item in block.get("caption", []))
-    if caption:
-        return f"<figure>{image_html}<figcaption>{caption}</figcaption></figure>"
-    return image_html
+    return generate_image_tag(block_id, image_url)
 
 
 def _render_callout_icon(icon: Any) -> str:
@@ -650,7 +647,7 @@ def _render_callout_icon(icon: Any) -> str:
         return ""
     if icon.get("type") == "emoji" and icon.get("emoji"):
         return f'<span class="callout-icon">{html.escape(str(icon["emoji"]))}</span>'
-    if icon.get("url"):
+    if icon.get("url") and _is_allowed_url_scheme(str(icon["url"])):
         return (
             '<img class="callout-icon" alt="" '
             f'src="{html.escape(str(icon["url"]), quote=True)}">'
