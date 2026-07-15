@@ -1,3 +1,4 @@
+import html
 import json
 import os
 import re
@@ -15,7 +16,7 @@ from diary_generator.util.linkcard import cache, linkcard
 
 log = logger.get_logger()
 
-CACHE_SCHEMA_VERSION = 1
+CACHE_SCHEMA_VERSION = 2
 JST = timezone(timedelta(hours=9))
 
 
@@ -390,36 +391,58 @@ def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
             image_url = image.get("external", {}).get("url", "")
         elif image_type == "file":
             image_url = image.get("file", {}).get("url", "")
-        if not image_url:
-            return {"block_id": block_id, "type": block_type}
-        return {
-            "block_id": block_id,
-            "type": block_type,
-            "image": {"url": image_url, "source_type": image_type},
-        }
+
+        caption = _normalize_rich_text_items(image.get("caption", []))
+        normalized = {"block_id": block_id, "type": block_type}
+        if image_url:
+            normalized["image"] = {"url": image_url, "source_type": image_type}
+        if caption:
+            normalized["caption"] = caption
+            normalized["plain_text"] = "".join(item.get("text", "") for item in caption)
+        return normalized
 
     block_data = block.get(block_type, {})
     if not isinstance(block_data, dict):
         return {"block_id": block_id, "type": block_type}
 
-    rich_text = block_data.get("rich_text", [])
-    normalized_rich_text = []
-    plain_parts = []
-    for item in rich_text:
-        normalized_item = _normalize_rich_text(item)
-        if normalized_item:
-            normalized_rich_text.append(normalized_item)
-            plain_parts.append(normalized_item.get("text", ""))
+    normalized_rich_text = _normalize_rich_text_items(block_data.get("rich_text", []))
 
     normalized = {
         "block_id": block_id,
         "type": block_type,
     }
-    plain_text = "".join(plain_parts).strip()
+    plain_text = "".join(item.get("text", "") for item in normalized_rich_text).strip()
     if plain_text:
         normalized["plain_text"] = plain_text
     if normalized_rich_text:
         normalized["rich_text"] = normalized_rich_text
+
+    if block_type == "to_do":
+        normalized["checked"] = bool(block_data.get("checked", False))
+    elif block_type == "callout":
+        icon = block_data.get("icon")
+        if isinstance(icon, dict):
+            normalized["icon"] = _normalize_icon(icon)
+
+    return normalized
+
+
+def _normalize_rich_text_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized_items = []
+    for item in items:
+        normalized_item = _normalize_rich_text(item)
+        if normalized_item:
+            normalized_items.append(normalized_item)
+    return normalized_items
+
+
+def _normalize_icon(icon: dict[str, Any]) -> dict[str, Any]:
+    icon_type = icon.get("type")
+    normalized = {"type": icon_type}
+    if icon_type == "emoji":
+        normalized["emoji"] = icon.get("emoji", "")
+    elif icon_type in {"external", "file"}:
+        normalized["url"] = icon.get(icon_type, {}).get("url", "")
     return normalized
 
 
@@ -505,23 +528,134 @@ def _compose_raw_data_from_caches(
 
 
 def _build_topic_content(topic: dict[str, Any]) -> list[str]:
-    content = []
-    for block in topic.get("blocks", []):
+    return render_blocks(topic.get("blocks", []))
+
+
+def render_blocks(blocks: list[dict[str, Any]]) -> list[str]:
+    content: list[str] = []
+    index = 0
+    while index < len(blocks):
+        block = blocks[index]
         block_type = block.get("type")
-        if block_type == "image":
-            image = block.get("image", {})
-            image_url = image.get("url")
-            block_id = block.get("block_id")
-            if image_url and block_id:
-                content.append(generate_image_tag(block_id, image_url))
+        if block_type in {"bulleted_list_item", "numbered_list_item"}:
+            list_type = block_type
+            items = []
+            while index < len(blocks) and blocks[index].get("type") == list_type:
+                item_html = _render_text_block_inner(blocks[index])
+                if item_html:
+                    items.append(f"<li>{item_html}</li>")
+                index += 1
+            if items:
+                tag = "ul" if list_type == "bulleted_list_item" else "ol"
+                content.append(f"<{tag}>" + "".join(items) + f"</{tag}>")
             continue
 
-        plain_text = block.get("plain_text", "")
-        if plain_text:
-            content.append(plain_text.replace("\n", "<br>"))
-        elif _is_empty_paragraph_block(block):
-            content.append("<br>")
+        rendered = render_block(block)
+        if rendered:
+            content.append(rendered)
+        index += 1
     return content
+
+
+def render_block(block: dict[str, Any]) -> str | None:
+    block_type = block.get("type")
+    match block_type:
+        case "paragraph":
+            inner = _render_text_block_inner(block)
+            if inner:
+                return f"<p>{inner}</p>"
+            return "<br>"
+        case "image":
+            return _render_image_block(block)
+        case "bulleted_list_item" | "numbered_list_item":
+            inner = _render_text_block_inner(block)
+            return f"<li>{inner}</li>" if inner else None
+        case "to_do":
+            inner = _render_text_block_inner(block)
+            if not inner:
+                return None
+            checked = " checked" if block.get("checked") else ""
+            return (
+                '<label class="todo">'
+                f'<input type="checkbox" disabled{checked}>'
+                f"<span>{inner}</span></label>"
+            )
+        case "quote":
+            inner = _render_text_block_inner(block)
+            return f"<blockquote>{inner}</blockquote>" if inner else None
+        case "callout":
+            inner = _render_text_block_inner(block)
+            icon = _render_callout_icon(block.get("icon"))
+            if not inner and not icon:
+                return None
+            return f'<div class="callout">{icon}<div>{inner}</div></div>'
+        case "divider":
+            return "<hr>"
+        case "heading_4":
+            inner = _render_text_block_inner(block)
+            return f"<h4>{inner}</h4>" if inner else None
+        case "heading_3":
+            return None
+        case _:
+            inner = _render_text_block_inner(block)
+            return f"<p>{inner}</p>" if inner else None
+
+
+def _render_text_block_inner(block: dict[str, Any]) -> str:
+    rich_text = block.get("rich_text")
+    if isinstance(rich_text, list) and rich_text:
+        return "".join(_render_rich_text_item(item) for item in rich_text).replace(
+            "\n", "<br>"
+        )
+    return html.escape(str(block.get("plain_text", ""))).replace("\n", "<br>")
+
+
+def _render_rich_text_item(item: dict[str, Any]) -> str:
+    text = html.escape(str(item.get("text", ""))).replace("\n", "<br>")
+    annotations = (
+        item.get("annotations") if isinstance(item.get("annotations"), dict) else {}
+    )
+    if annotations.get("code"):
+        text = f"<code>{text}</code>"
+    if annotations.get("bold"):
+        text = f"<strong>{text}</strong>"
+    if annotations.get("italic"):
+        text = f"<em>{text}</em>"
+    if annotations.get("strikethrough"):
+        text = f"<s>{text}</s>"
+    if annotations.get("underline"):
+        text = f"<u>{text}</u>"
+    href = item.get("href")
+    if href:
+        escaped_href = html.escape(str(href), quote=True)
+        text = f'<a href="{escaped_href}" target="_blank" rel="noopener noreferrer">{text}</a>'
+    return text
+
+
+def _render_image_block(block: dict[str, Any]) -> str | None:
+    image = block.get("image", {})
+    image_url = image.get("url") if isinstance(image, dict) else None
+    block_id = block.get("block_id")
+    if not image_url or not block_id:
+        return None
+    image_html = generate_image_tag(block_id, image_url)
+    caption = "".join(_render_rich_text_item(item) for item in block.get("caption", []))
+    if caption:
+        return f"<figure>{image_html}<figcaption>{caption}</figcaption></figure>"
+    return image_html
+
+
+def _render_callout_icon(icon: Any) -> str:
+    if not isinstance(icon, dict):
+        return ""
+    if icon.get("type") == "emoji" and icon.get("emoji"):
+        return f'<span class="callout-icon">{html.escape(str(icon["emoji"]))}</span>'
+    if icon.get("url"):
+        return (
+            '<img class="callout-icon" alt="" '
+            f'src="{html.escape(str(icon["url"]), quote=True)}">'
+        )
+    return ""
 
 
 def _parse_iso_datetime(value: str) -> datetime:

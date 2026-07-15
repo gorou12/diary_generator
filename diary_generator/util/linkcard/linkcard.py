@@ -10,6 +10,15 @@ def create(contents: list[str]) -> list[str]:
 
 
 def _sub_link_card(text: str) -> str:
+    anchors: list[str] = []
+
+    def preserve_anchor(match):
+        anchors.append(match.group(0))
+        return f"__DIARY_GENERATOR_ANCHOR_{len(anchors) - 1}__"
+
+    preserved_text = re.sub(
+        r"<a\b[^>]*>.*?</a>", preserve_anchor, text, flags=re.DOTALL
+    )
     url_pattern = re.compile(r'(https?://[^\s<>"\'\)\]]+)')
 
     def replace_url(match):
@@ -37,4 +46,7 @@ def _sub_link_card(text: str) -> str:
                 else:
                     return f'<a href="{url}" target="_blank">{url}</a>'
 
-    return url_pattern.sub(replace_url, text)
+    rendered = url_pattern.sub(replace_url, preserved_text)
+    for index, anchor in enumerate(anchors):
+        rendered = rendered.replace(f"__DIARY_GENERATOR_ANCHOR_{index}__", anchor)
+    return rendered
