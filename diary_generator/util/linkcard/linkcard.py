@@ -14,7 +14,7 @@ def _sub_link_card(text: str) -> str:
 
     def preserve_html(match):
         preserved_html.append(match.group(0))
-        return f"__DIARY_GENERATOR_HTML_{len(preserved_html) - 1}__"
+        return f"<!--DIARY_GENERATOR_HTML_{len(preserved_html) - 1}-->"
 
     preserved_text = re.sub(
         r"<a\b[^>]*>.*?</a>|<[^>]+>",
@@ -51,5 +51,5 @@ def _sub_link_card(text: str) -> str:
 
     rendered = url_pattern.sub(replace_url, preserved_text)
     for index, html in enumerate(preserved_html):
-        rendered = rendered.replace(f"__DIARY_GENERATOR_HTML_{index}__", html)
+        rendered = rendered.replace(f"<!--DIARY_GENERATOR_HTML_{index}-->", html)
     return rendered

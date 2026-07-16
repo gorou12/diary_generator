@@ -601,10 +601,26 @@ def render_block(block: dict[str, Any]) -> str | None:
 def _render_text_block_inner(block: dict[str, Any]) -> str:
     rich_text = block.get("rich_text")
     if isinstance(rich_text, list) and rich_text:
+        if _is_standalone_url_paragraph(block):
+            return html.escape(str(rich_text[0].get("text", ""))).replace("\n", "<br>")
         return "".join(_render_rich_text_item(item) for item in rich_text).replace(
             "\n", "<br>"
         )
     return html.escape(str(block.get("plain_text", ""))).replace("\n", "<br>")
+
+
+def _is_standalone_url_paragraph(block: dict[str, Any]) -> bool:
+    if block.get("type") != "paragraph":
+        return False
+    rich_text = block.get("rich_text")
+    if not isinstance(rich_text, list) or len(rich_text) != 1:
+        return False
+    item = rich_text[0]
+    text = str(item.get("text", ""))
+    href = item.get("href")
+    if not href or text != str(href):
+        return False
+    return urlparse(text).scheme.lower() in {"https", "http"}
 
 
 def _render_rich_text_item(item: dict[str, Any]) -> str:

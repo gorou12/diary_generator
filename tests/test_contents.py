@@ -242,6 +242,109 @@ def test_render_rich_text_validates_link_schemes_and_escapes_values():
     )
 
 
+def test_standalone_url_rich_text_paragraph_is_not_prelinked():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "https://example.com/page",
+                    "href": "https://example.com/page",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    assert rendered == "<p>https://example.com/page</p>"
+
+
+def test_standalone_url_rich_text_paragraph_becomes_link_card(monkeypatch):
+    monkeypatch.setattr(contents.linkcard.linkcard, "ogp_cache", {})
+    monkeypatch.setattr(
+        contents.linkcard,
+        "fetch_data",
+        lambda url: {"title": "Example", "description": "Description", "image": ""},
+    )
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "https://example.com/page",
+                    "href": "https://example.com/page",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    linked = contents.linkcard.create([rendered])[0]
+
+    assert '<div class="link-card">' in linked
+    assert '<a href="https://example.com/page" target="_blank">' in linked
+
+
+def test_named_link_rich_text_paragraph_stays_inline_anchor():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "こちら",
+                    "href": "https://example.com",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    assert rendered == (
+        '<p><a href="https://example.com" target="_blank" '
+        'rel="noopener noreferrer">こちら</a></p>'
+    )
+
+
+def test_url_link_inside_sentence_stays_inline_anchor():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {"text": "see ", "annotations": {}},
+                {
+                    "text": "https://example.com",
+                    "href": "https://example.com",
+                    "annotations": {},
+                },
+            ],
+        }
+    )
+
+    assert rendered == (
+        '<p>see <a href="https://example.com" target="_blank" '
+        'rel="noopener noreferrer">https://example.com</a></p>'
+    )
+
+
+def test_standalone_disallowed_scheme_url_is_not_linked_or_carded(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "javascript:alert(1)",
+                    "href": "javascript:alert(1)",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    assert rendered == "<p>javascript:alert(1)</p>"
+    assert contents.linkcard.create([rendered]) == [rendered]
+
+
 def test_normalize_block_preserves_type_specific_display_data():
     todo = {
         "id": "todo-1",
