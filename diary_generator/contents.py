@@ -17,7 +17,7 @@ from diary_generator.util.linkcard import cache, linkcard
 
 log = logger.get_logger()
 
-CACHE_SCHEMA_VERSION = 2
+CACHE_SCHEMA_VERSION = 3
 JST = timezone(timedelta(hours=9))
 
 
@@ -254,17 +254,7 @@ def _fetch_diary_page(page_id: str, now: datetime) -> tuple[list[dict[str, Any]]
     戻り値: (topics, has_pending_topics)
     has_pending_topics が True の場合、5分未満フィルタで除外されたトピックが存在する。
     """
-    all_blocks = []
-    cursor = None
-
-    while True:
-        data = notion_api.get_block_children(page_id, start_cursor=cursor)
-        results = data.get("results", [])
-        all_blocks.extend(results)
-
-        if not data.get("has_more"):
-            break
-        cursor = data.get("next_cursor")
+    all_blocks = _fetch_block_children_recursive(page_id)
 
     topics: list[dict[str, Any]] = []
     current_topic = _new_topic()
@@ -295,12 +285,30 @@ def _fetch_diary_page(page_id: str, now: datetime) -> tuple[list[dict[str, Any]]
 
             normalized_block = _normalize_block(block)
             if normalized_block:
-                normalized_block["_last_edited_time"] = last_edited_time
                 current_topic["blocks"].append(normalized_block)
 
     pending = _finalize_topic(topics, current_topic, now)
     has_pending = has_pending or pending
     return topics, has_pending
+
+
+def _fetch_block_children_recursive(block_id: str) -> list[dict[str, Any]]:
+    blocks: list[dict[str, Any]] = []
+    cursor = None
+
+    while True:
+        data = notion_api.get_block_children(block_id, start_cursor=cursor)
+        results = data.get("results", [])
+        for block in results:
+            if block.get("has_children"):
+                block["children"] = _fetch_block_children_recursive(block.get("id", ""))
+            blocks.append(block)
+
+        if not data.get("has_more"):
+            break
+        cursor = data.get("next_cursor")
+
+    return blocks
 
 
 def _new_topic(
@@ -342,12 +350,19 @@ def _finalize_topic(
         return True  # PendingTime未満: キャッシュに含めず保留
     topic["blocks"] = [_strip_block_runtime_fields(block) for block in effective_blocks]
     topic["plain_text"] = " ".join(
-        block.get("plain_text", "")
-        for block in topic.get("blocks", [])
-        if block.get("plain_text")
+        _iter_block_plain_text(topic.get("blocks", []))
     ).strip()
     topics.append(topic)
     return False
+
+
+def _iter_block_plain_text(blocks: list[dict[str, Any]]):
+    for block in blocks:
+        if block.get("plain_text"):
+            yield block["plain_text"]
+        children = block.get("children")
+        if isinstance(children, list):
+            yield from _iter_block_plain_text(children)
 
 
 def _trim_trailing_empty_paragraphs(
@@ -366,16 +381,28 @@ def _is_empty_paragraph_block(block: dict[str, Any]) -> bool:
 def _latest_block_last_edited_time(blocks: list[dict[str, Any]]) -> str:
     latest = ""
     for block in blocks:
-        candidate = block.get("_last_edited_time", "")
-        if not candidate:
-            continue
-        if not latest or _parse_iso_datetime(candidate) > _parse_iso_datetime(latest):
-            latest = candidate
+        candidates = [block.get("_last_edited_time", "")]
+        children = block.get("children")
+        if isinstance(children, list):
+            candidates.append(_latest_block_last_edited_time(children))
+        for candidate in candidates:
+            if not candidate:
+                continue
+            if not latest or _parse_iso_datetime(candidate) > _parse_iso_datetime(
+                latest
+            ):
+                latest = candidate
     return latest
 
 
 def _strip_block_runtime_fields(block: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in block.items() if not key.startswith("_")}
+    stripped = {key: value for key, value in block.items() if not key.startswith("_")}
+    children = stripped.get("children")
+    if isinstance(children, list):
+        stripped["children"] = [
+            _strip_block_runtime_fields(child) for child in children
+        ]
+    return stripped
 
 
 def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
@@ -384,6 +411,8 @@ def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     block_id = block.get("id", "")
+    last_edited_time = block.get("last_edited_time") or _now_iso()
+
     if block_type == "image":
         image = block.get("image", {})
         image_type = image.get("type")
@@ -396,6 +425,8 @@ def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
         normalized = {"block_id": block_id, "type": block_type}
         if image_url:
             normalized["image"] = {"url": image_url, "source_type": image_type}
+        _attach_normalized_children(normalized, block)
+        normalized["_last_edited_time"] = last_edited_time
         return normalized
 
     block_data = block.get(block_type, {})
@@ -421,7 +452,24 @@ def _normalize_block(block: dict[str, Any]) -> dict[str, Any] | None:
         if isinstance(icon, dict):
             normalized["icon"] = _normalize_icon(icon)
 
+    _attach_normalized_children(normalized, block)
+    normalized["_last_edited_time"] = last_edited_time
     return normalized
+
+
+def _attach_normalized_children(
+    normalized: dict[str, Any], block: dict[str, Any]
+) -> None:
+    children = block.get("children")
+    if not isinstance(children, list):
+        return
+    normalized_children = []
+    for child in children:
+        normalized_child = _normalize_block(child)
+        if normalized_child:
+            normalized_children.append(normalized_child)
+    if normalized_children:
+        normalized["children"] = normalized_children
 
 
 def _normalize_rich_text_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -538,9 +586,9 @@ def render_blocks(blocks: list[dict[str, Any]]) -> list[str]:
             list_type = block_type
             items = []
             while index < len(blocks) and blocks[index].get("type") == list_type:
-                item_html = _render_text_block_inner(blocks[index])
+                item_html = _render_list_item(blocks[index])
                 if item_html:
-                    items.append(f"<li>{item_html}</li>")
+                    items.append(item_html)
                 index += 1
             if items:
                 tag = "ul" if list_type == "bulleted_list_item" else "ol"
@@ -554,7 +602,61 @@ def render_blocks(blocks: list[dict[str, Any]]) -> list[str]:
     return content
 
 
+def _render_list_item(block: dict[str, Any]) -> str | None:
+    inner = _render_text_block_inner(block)
+    child_html = _render_list_item_children(block)
+    if not inner and not child_html:
+        return None
+    return f"<li>{inner}{child_html}</li>"
+
+
+def _render_list_item_children(block: dict[str, Any]) -> str:
+    children = block.get("children")
+    if not isinstance(children, list) or not children:
+        return ""
+
+    list_children = []
+    for child in children:
+        if _is_list_item_block(child):
+            list_children.append(child)
+        else:
+            _warn_skipped_list_item_child(block, child)
+    return "".join(render_blocks(list_children))
+
+
+def _is_list_item_block(block: dict[str, Any]) -> bool:
+    return block.get("type") in {"bulleted_list_item", "numbered_list_item"}
+
+
+def _warn_skipped_list_item_child(
+    parent: dict[str, Any], child: dict[str, Any]
+) -> None:
+    log.warning(
+        "⚠️ Notion list item has unsupported child block; child HTML output was skipped: "
+        "parent_block_id=%s parent_type=%s child_block_id=%s child_type=%s",
+        parent.get("block_id") or parent.get("id", ""),
+        parent.get("type", ""),
+        child.get("block_id") or child.get("id", ""),
+        child.get("type", ""),
+    )
+
+
+def _warn_if_unsupported_child_blocks(block: dict[str, Any]) -> None:
+    children = block.get("children")
+    if not isinstance(children, list) or not children or _is_list_item_block(block):
+        return
+
+    log.warning(
+        "⚠️ Notion block has unsupported child blocks; child HTML output was skipped: "
+        "block_id=%s type=%s child_count=%d",
+        block.get("block_id") or block.get("id", ""),
+        block.get("type", ""),
+        len(children),
+    )
+
+
 def render_block(block: dict[str, Any]) -> str | None:
+    _warn_if_unsupported_child_blocks(block)
     block_type = block.get("type")
     match block_type:
         case "paragraph":
