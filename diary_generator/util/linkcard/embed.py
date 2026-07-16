@@ -44,7 +44,7 @@ def niconico(url: str):
 
 def twitter(url: str):
     if url in linkcard.oembed_cache:
-        log.info(f"✅ ツイートキャッシュヒット: {url}")
+        log.debug(f"✅ ツイートキャッシュヒット: {url}")
         return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
@@ -69,7 +69,7 @@ def twitter(url: str):
 
 def bluesky(url: str):
     if url in linkcard.oembed_cache:
-        log.info(f"✅ ポストキャッシュヒット: {url}")
+        log.debug(f"✅ ポストキャッシュヒット: {url}")
         return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
@@ -94,7 +94,7 @@ def bluesky(url: str):
 
 def poketedon(url: str):
     if url in linkcard.oembed_cache:
-        log.info(f"✅ トゥートキャッシュヒット: {url}")
+        log.debug(f"✅ トゥートキャッシュヒット: {url}")
         return linkcard.oembed_cache.get(url).get(
             "html", f'<a href="{url}" target="_blank">{url}</a>'
         )
