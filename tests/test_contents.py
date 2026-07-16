@@ -370,7 +370,10 @@ def test_normalize_block_preserves_type_specific_display_data():
         "type": "emoji",
         "emoji": "📌",
     }
-    assert contents._normalize_block(image) == {
+    normalized_image = contents._strip_block_runtime_fields(
+        contents._normalize_block(image)
+    )
+    assert normalized_image == {
         "block_id": "image-1",
         "type": "image",
         "image": {"url": "https://example.com/a.png", "source_type": "external"},
@@ -378,7 +381,7 @@ def test_normalize_block_preserves_type_specific_display_data():
 
 
 def test_cache_schema_version_changed_for_old_cache_regeneration():
-    assert contents.CACHE_SCHEMA_VERSION == 2
+    assert contents.CACHE_SCHEMA_VERSION == 3
 
 
 def test_linkcard_keeps_rich_text_anchor_intact(monkeypatch):
@@ -401,7 +404,6 @@ def test_linkcard_keeps_rich_text_anchor_intact(monkeypatch):
     assert contents.linkcard.create(content) == content
 
 
-
 def test_linkcard_keeps_anchor_with_url_text_intact(monkeypatch):
     monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
     content = ['<a href="https://example.com">https://example.com</a>']
@@ -414,6 +416,7 @@ def test_linkcard_keeps_anchor_with_link_label_intact(monkeypatch):
     content = ['<a href="https://example.com">リンク名</a>']
 
     assert contents.linkcard.create(content) == content
+
 
 def test_linkcard_does_not_convert_image_src_url(monkeypatch):
     monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
@@ -444,13 +447,16 @@ def test_linkcard_handles_mixed_html_tag_and_plain_urls(monkeypatch):
 
 
 def test_render_callout_icon_falls_back_for_unknown_icon_format():
-    assert contents.render_block(
-        {
-            "type": "callout",
-            "plain_text": "本文のみ",
-            "icon": {"type": "custom", "value": {"unexpected": True}},
-        }
-    ) == '<div class="callout"><div>本文のみ</div></div>'
+    assert (
+        contents.render_block(
+            {
+                "type": "callout",
+                "plain_text": "本文のみ",
+                "icon": {"type": "custom", "value": {"unexpected": True}},
+            }
+        )
+        == '<div class="callout"><div>本文のみ</div></div>'
+    )
 
 
 def test_render_callout_icon_validates_image_url_scheme():
@@ -464,10 +470,204 @@ def test_render_callout_icon_validates_image_url_scheme():
         '<div class="callout"><img class="callout-icon" alt="" '
         'src="https://example.com/icon.png"><div>本文</div></div>'
     )
-    assert contents.render_block(
-        {
-            "type": "callout",
-            "plain_text": "本文",
-            "icon": {"type": "external", "url": "javascript:alert(1)"},
-        }
-    ) == '<div class="callout"><div>本文</div></div>'
+    assert (
+        contents.render_block(
+            {
+                "type": "callout",
+                "plain_text": "本文",
+                "icon": {"type": "external", "url": "javascript:alert(1)"},
+            }
+        )
+        == '<div class="callout"><div>本文</div></div>'
+    )
+
+
+def test_fetch_page_recursively_normalizes_child_blocks(monkeypatch):
+    calls = []
+    parent = block(
+        "bulleted_list_item",
+        "1段目",
+        block_id="parent",
+        last_edited_time=OLD,
+    )
+    parent["has_children"] = True
+    child = block(
+        "bulleted_list_item",
+        "2段目",
+        block_id="child",
+        last_edited_time=OLD,
+    )
+
+    def fake_get_block_children(block_id, start_cursor=None):
+        calls.append((block_id, start_cursor))
+        if block_id == "page-1":
+            return notion_children_response(
+                [block("heading_3", "リスト", last_edited_time=OLD), parent]
+            )
+        if block_id == "parent":
+            return notion_children_response([child])
+        return notion_children_response([])
+
+    monkeypatch.setattr(notion_api, "get_block_children", fake_get_block_children)
+
+    topics, has_pending = contents._fetch_diary_page("page-1", NOW)
+
+    assert has_pending is False
+    assert calls == [("page-1", None), ("parent", None)]
+    assert topics[0]["blocks"][0]["children"][0]["plain_text"] == "2段目"
+    assert topics[0]["plain_text"] == "1段目 2段目"
+
+
+def test_fetch_children_paginates_child_blocks(monkeypatch):
+    parent = block(
+        "bulleted_list_item", "1段目", block_id="parent", last_edited_time=OLD
+    )
+    parent["has_children"] = True
+    child_1 = block(
+        "bulleted_list_item", "2段目-1", block_id="child-1", last_edited_time=OLD
+    )
+    child_2 = block(
+        "bulleted_list_item", "2段目-2", block_id="child-2", last_edited_time=OLD
+    )
+
+    def fake_get_block_children(block_id, start_cursor=None):
+        if block_id == "page-1":
+            return notion_children_response(
+                [block("heading_3", "リスト", last_edited_time=OLD), parent]
+            )
+        if block_id == "parent" and start_cursor is None:
+            return {"results": [child_1], "has_more": True, "next_cursor": "next"}
+        if block_id == "parent" and start_cursor == "next":
+            return notion_children_response([child_2])
+        return notion_children_response([])
+
+    monkeypatch.setattr(notion_api, "get_block_children", fake_get_block_children)
+
+    topics, _ = contents._fetch_diary_page("page-1", NOW)
+
+    assert [child["plain_text"] for child in topics[0]["blocks"][0]["children"]] == [
+        "2段目-1",
+        "2段目-2",
+    ]
+
+
+def test_fetch_page_skips_child_api_when_has_children_is_false(monkeypatch):
+    calls = []
+    item = block("bulleted_list_item", "1段目", block_id="item", last_edited_time=OLD)
+    item["has_children"] = False
+
+    def fake_get_block_children(block_id, start_cursor=None):
+        calls.append((block_id, start_cursor))
+        return notion_children_response(
+            [block("heading_3", "リスト", last_edited_time=OLD), item]
+        )
+
+    monkeypatch.setattr(notion_api, "get_block_children", fake_get_block_children)
+
+    contents._fetch_diary_page("page-1", NOW)
+
+    assert calls == [("page-1", None)]
+
+
+def test_child_last_edited_time_controls_pending(monkeypatch):
+    original_pending_time = config.TOPIC_PENDING_TIME
+    parent = block(
+        "bulleted_list_item", "1段目", block_id="parent", last_edited_time=OLD
+    )
+    parent["has_children"] = True
+    child = block(
+        "bulleted_list_item",
+        "編集中",
+        block_id="child",
+        last_edited_time=NOW - timedelta(minutes=4),
+    )
+
+    def fake_get_block_children(block_id, start_cursor=None):
+        if block_id == "page-1":
+            return notion_children_response(
+                [block("heading_3", "リスト", last_edited_time=OLD), parent]
+            )
+        if block_id == "parent":
+            return notion_children_response([child])
+        return notion_children_response([])
+
+    object.__setattr__(config, "TOPIC_PENDING_TIME", 5 * 60)
+    try:
+        monkeypatch.setattr(notion_api, "get_block_children", fake_get_block_children)
+        topics, has_pending = contents._fetch_diary_page("page-1", NOW)
+    finally:
+        object.__setattr__(config, "TOPIC_PENDING_TIME", original_pending_time)
+
+    assert topics == []
+    assert has_pending is True
+
+
+def test_render_nested_list_structures():
+    assert contents.render_blocks(
+        [
+            {
+                "type": "bulleted_list_item",
+                "plain_text": "1段目",
+                "children": [
+                    {"type": "numbered_list_item", "plain_text": "2段目-1"},
+                    {"type": "numbered_list_item", "plain_text": "2段目-2"},
+                    {"type": "bulleted_list_item", "plain_text": "2段目-3"},
+                ],
+            }
+        ]
+    ) == [
+        "<ul><li>1段目<ol><li>2段目-1</li><li>2段目-2</li></ol>"
+        "<ul><li>2段目-3</li></ul></li></ul>"
+    ]
+
+
+def test_render_numbered_parent_with_bulleted_grandchild_and_non_list_children():
+    assert contents.render_blocks(
+        [
+            {
+                "type": "numbered_list_item",
+                "plain_text": "1段目",
+                "children": [
+                    {
+                        "type": "bulleted_list_item",
+                        "plain_text": "2段目",
+                        "children": [
+                            {"type": "bulleted_list_item", "plain_text": "3段目"},
+                            {"type": "paragraph", "plain_text": "補足"},
+                            {"type": "to_do", "plain_text": "確認", "checked": True},
+                        ],
+                    }
+                ],
+            }
+        ]
+    ) == [
+        "<ol><li>1段目<ul><li>2段目<ul><li>3段目</li></ul>"
+        "<p>補足</p>"
+        '<label class="todo"><input type="checkbox" disabled checked>'
+        "<span>確認</span></label></li></ul></li></ol>"
+    ]
+
+
+def test_unknown_child_block_does_not_break_rendering(monkeypatch):
+    parent = block(
+        "bulleted_list_item", "1段目", block_id="parent", last_edited_time=OLD
+    )
+    parent["has_children"] = True
+    unknown = block("unsupported", "未対応", block_id="unknown", last_edited_time=OLD)
+
+    def fake_get_block_children(block_id, start_cursor=None):
+        if block_id == "page-1":
+            return notion_children_response(
+                [block("heading_3", "リスト", last_edited_time=OLD), parent]
+            )
+        if block_id == "parent":
+            return notion_children_response([unknown])
+        return notion_children_response([])
+
+    monkeypatch.setattr(notion_api, "get_block_children", fake_get_block_children)
+
+    topics, _ = contents._fetch_diary_page("page-1", NOW)
+
+    assert contents._build_topic_content(topics[0]) == [
+        "<ul><li>1段目<p>未対応</p></li></ul>"
+    ]
