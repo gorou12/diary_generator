@@ -620,12 +620,25 @@ def _render_list_item_children(block: dict[str, Any]) -> str:
         if _is_list_item_block(child):
             list_children.append(child)
         else:
-            _warn_if_unsupported_child_blocks(child)
+            _warn_skipped_list_item_child(block, child)
     return "".join(render_blocks(list_children))
 
 
 def _is_list_item_block(block: dict[str, Any]) -> bool:
     return block.get("type") in {"bulleted_list_item", "numbered_list_item"}
+
+
+def _warn_skipped_list_item_child(
+    parent: dict[str, Any], child: dict[str, Any]
+) -> None:
+    log.warning(
+        "⚠️ Notion list item has unsupported child block; child HTML output was skipped: "
+        "parent_block_id=%s parent_type=%s child_block_id=%s child_type=%s",
+        parent.get("block_id") or parent.get("id", ""),
+        parent.get("type", ""),
+        child.get("block_id") or child.get("id", ""),
+        child.get("type", ""),
+    )
 
 
 def _warn_if_unsupported_child_blocks(block: dict[str, Any]) -> None:

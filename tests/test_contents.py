@@ -634,8 +634,6 @@ def test_render_numbered_parent_with_bulleted_grandchild_and_non_list_children()
                         "plain_text": "2段目",
                         "children": [
                             {"type": "bulleted_list_item", "plain_text": "3段目"},
-                            {"type": "paragraph", "plain_text": "補足"},
-                            {"type": "to_do", "plain_text": "確認", "checked": True},
                         ],
                     }
                 ],
@@ -646,7 +644,56 @@ def test_render_numbered_parent_with_bulleted_grandchild_and_non_list_children()
     ]
 
 
-def test_unknown_child_block_does_not_break_rendering(monkeypatch):
+def test_list_item_paragraph_child_is_hidden_and_warns(caplog):
+    caplog.set_level(logging.WARNING, logger="diary_system")
+
+    assert contents.render_blocks(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "plain_text": "1段目",
+                "children": [
+                    {"block_id": "paragraph-1", "type": "paragraph", "plain_text": "補足"},
+                ],
+            }
+        ]
+    ) == ["<ul><li>1段目</li></ul>"]
+
+    assert "unsupported child block" in caplog.text
+    assert "parent_block_id=list-1" in caplog.text
+    assert "child_block_id=paragraph-1" in caplog.text
+    assert "child_type=paragraph" in caplog.text
+
+
+def test_list_item_to_do_child_is_hidden_and_warns(caplog):
+    caplog.set_level(logging.WARNING, logger="diary_system")
+
+    assert contents.render_blocks(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "plain_text": "1段目",
+                "children": [
+                    {
+                        "block_id": "todo-1",
+                        "type": "to_do",
+                        "plain_text": "確認",
+                        "checked": False,
+                    },
+                ],
+            }
+        ]
+    ) == ["<ul><li>1段目</li></ul>"]
+
+    assert "unsupported child block" in caplog.text
+    assert "parent_block_id=list-1" in caplog.text
+    assert "child_block_id=todo-1" in caplog.text
+    assert "child_type=to_do" in caplog.text
+
+
+def test_unknown_child_block_does_not_break_rendering(monkeypatch, caplog):
     parent = block(
         "bulleted_list_item", "1段目", block_id="parent", last_edited_time=OLD
     )
@@ -663,10 +710,15 @@ def test_unknown_child_block_does_not_break_rendering(monkeypatch):
         return notion_children_response([])
 
     monkeypatch.setattr(notion_api, "get_block_children", fake_get_block_children)
+    caplog.set_level(logging.WARNING, logger="diary_system")
 
     topics, _ = contents._fetch_diary_page("page-1", NOW)
 
     assert contents._build_topic_content(topics[0]) == ["<ul><li>1段目</li></ul>"]
+    assert "unsupported child block" in caplog.text
+    assert "parent_block_id=parent" in caplog.text
+    assert "child_block_id=unknown" in caplog.text
+    assert "child_type=unsupported" in caplog.text
 
 
 def test_non_list_block_children_emit_warning_without_rendering(caplog):
