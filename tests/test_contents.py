@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from diary_generator import contents, notion_api
@@ -641,10 +642,7 @@ def test_render_numbered_parent_with_bulleted_grandchild_and_non_list_children()
             }
         ]
     ) == [
-        "<ol><li>1段目<ul><li>2段目<ul><li>3段目</li></ul>"
-        "<p>補足</p>"
-        '<label class="todo"><input type="checkbox" disabled checked>'
-        "<span>確認</span></label></li></ul></li></ol>"
+        "<ol><li>1段目<ul><li>2段目<ul><li>3段目</li></ul></li></ul></li></ol>"
     ]
 
 
@@ -668,6 +666,24 @@ def test_unknown_child_block_does_not_break_rendering(monkeypatch):
 
     topics, _ = contents._fetch_diary_page("page-1", NOW)
 
-    assert contents._build_topic_content(topics[0]) == [
-        "<ul><li>1段目<p>未対応</p></li></ul>"
-    ]
+    assert contents._build_topic_content(topics[0]) == ["<ul><li>1段目</li></ul>"]
+
+
+def test_non_list_block_children_emit_warning_without_rendering(caplog):
+    caplog.set_level(logging.WARNING, logger="diary_system")
+
+    assert contents.render_blocks(
+        [
+            {
+                "block_id": "paragraph-1",
+                "type": "paragraph",
+                "plain_text": "親段落",
+                "children": [
+                    {"type": "paragraph", "plain_text": "非表示の子"},
+                ],
+            }
+        ]
+    ) == ["<p>親段落</p>"]
+
+    assert "unsupported child blocks" in caplog.text
+    assert "block_id=paragraph-1" in caplog.text

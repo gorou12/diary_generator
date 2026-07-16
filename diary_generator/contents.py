@@ -604,16 +604,46 @@ def render_blocks(blocks: list[dict[str, Any]]) -> list[str]:
 
 def _render_list_item(block: dict[str, Any]) -> str | None:
     inner = _render_text_block_inner(block)
-    child_html = ""
-    children = block.get("children")
-    if isinstance(children, list) and children:
-        child_html = "".join(render_blocks(children))
+    child_html = _render_list_item_children(block)
     if not inner and not child_html:
         return None
     return f"<li>{inner}{child_html}</li>"
 
 
+def _render_list_item_children(block: dict[str, Any]) -> str:
+    children = block.get("children")
+    if not isinstance(children, list) or not children:
+        return ""
+
+    list_children = []
+    for child in children:
+        if _is_list_item_block(child):
+            list_children.append(child)
+        else:
+            _warn_if_unsupported_child_blocks(child)
+    return "".join(render_blocks(list_children))
+
+
+def _is_list_item_block(block: dict[str, Any]) -> bool:
+    return block.get("type") in {"bulleted_list_item", "numbered_list_item"}
+
+
+def _warn_if_unsupported_child_blocks(block: dict[str, Any]) -> None:
+    children = block.get("children")
+    if not isinstance(children, list) or not children or _is_list_item_block(block):
+        return
+
+    log.warning(
+        "⚠️ Notion block has unsupported child blocks; child HTML output was skipped: "
+        "block_id=%s type=%s child_count=%d",
+        block.get("block_id") or block.get("id", ""),
+        block.get("type", ""),
+        len(children),
+    )
+
+
 def render_block(block: dict[str, Any]) -> str | None:
+    _warn_if_unsupported_child_blocks(block)
     block_type = block.get("type")
     match block_type:
         case "paragraph":
