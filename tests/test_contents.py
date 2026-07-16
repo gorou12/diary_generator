@@ -57,9 +57,9 @@ def test_empty_paragraph_in_middle_of_topic_is_kept(monkeypatch):
     )
 
     assert contents._build_topic_content(topics[0]) == [
-        "公園へ向かった",
+        "<p>公園へ向かった</p>",
         "<br>",
-        "公園まで歩いた",
+        "<p>公園まで歩いた</p>",
     ]
     assert topics[0]["plain_text"] == "公園へ向かった 公園まで歩いた"
 
@@ -77,7 +77,7 @@ def test_trailing_empty_paragraph_is_not_included_in_body(monkeypatch):
         ],
     )
 
-    assert contents._build_topic_content(topics[0]) == ["公園まで歩いた"]
+    assert contents._build_topic_content(topics[0]) == ["<p>公園まで歩いた</p>"]
     assert topics[0]["plain_text"] == "公園まで歩いた"
 
 
@@ -142,3 +142,332 @@ def test_topic_edited_less_than_five_minutes_ago_is_pending(monkeypatch):
 
     assert topics == []
     assert has_pending is True
+
+
+def test_render_supported_blocks(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        contents,
+        "generate_image_tag",
+        lambda block_id, image_url: calls.append((block_id, image_url)) or "<img>",
+    )
+
+    blocks = [
+        {"type": "paragraph", "plain_text": "通常の文章"},
+        {"type": "paragraph"},
+        {"type": "bulleted_list_item", "plain_text": "項目1"},
+        {"type": "bulleted_list_item", "plain_text": "項目2"},
+        {"type": "numbered_list_item", "plain_text": "手順1"},
+        {"type": "numbered_list_item", "plain_text": "手順2"},
+        {"type": "bulleted_list_item", "plain_text": "別項目"},
+        {"type": "to_do", "plain_text": "完了した項目", "checked": True},
+        {"type": "to_do", "plain_text": "未完了", "checked": False},
+        {"type": "quote", "plain_text": "引用文"},
+        {"type": "divider"},
+        {"type": "heading_4", "plain_text": "小見出し"},
+        {
+            "type": "callout",
+            "plain_text": "注意",
+            "icon": {"type": "emoji", "emoji": "💡"},
+        },
+        {
+            "type": "image",
+            "block_id": "image-1",
+            "image": {"url": "https://example.com/image.png"},
+        },
+        {"type": "unsupported", "plain_text": "フォールバック"},
+        {"type": "unsupported"},
+    ]
+
+    assert contents.render_blocks(blocks) == [
+        "<p>通常の文章</p>",
+        "<br>",
+        "<ul><li>項目1</li><li>項目2</li></ul>",
+        "<ol><li>手順1</li><li>手順2</li></ol>",
+        "<ul><li>別項目</li></ul>",
+        '<label class="todo"><input type="checkbox" disabled checked><span>完了した項目</span></label>',
+        '<label class="todo"><input type="checkbox" disabled><span>未完了</span></label>',
+        "<blockquote>引用文</blockquote>",
+        "<hr>",
+        "<h4>小見出し</h4>",
+        '<div class="callout"><span class="callout-icon">💡</span><div>注意</div></div>',
+        "<img>",
+        "<p>フォールバック</p>",
+    ]
+    assert calls == [("image-1", "https://example.com/image.png")]
+
+
+def test_render_rich_text_and_escape_html():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "link & bold",
+                    "href": 'https://example.com/?q=<x>&a="b"',
+                    "annotations": {"bold": True},
+                },
+                {"text": " italic", "annotations": {"italic": True}},
+                {"text": " strike", "annotations": {"strikethrough": True}},
+                {"text": " underline", "annotations": {"underline": True}},
+                {"text": " code <tag>", "annotations": {"code": True}},
+            ],
+        }
+    )
+
+    assert rendered == (
+        '<p><a href="https://example.com/?q=&lt;x&gt;&amp;a=&quot;b&quot;" '
+        'target="_blank" rel="noopener noreferrer"><strong>link &amp; bold</strong></a>'
+        "<em> italic</em><s> strike</s><u> underline</u><code> code &lt;tag&gt;</code></p>"
+    )
+
+
+def test_render_rich_text_validates_link_schemes_and_escapes_values():
+    rich_text = [
+        {"text": "https", "href": "https://example.com/?q=<x>", "annotations": {}},
+        {"text": " http", "href": "http://example.com", "annotations": {}},
+        {"text": " mail", "href": "mailto:test@example.com", "annotations": {}},
+        {"text": " js", "href": "javascript:alert(1)", "annotations": {}},
+        {"text": " data <tag>", "href": "data:text/html,<p>x</p>", "annotations": {}},
+    ]
+
+    rendered = contents.render_block({"type": "paragraph", "rich_text": rich_text})
+
+    assert rendered == (
+        '<p><a href="https://example.com/?q=&lt;x&gt;" target="_blank" '
+        'rel="noopener noreferrer">https</a>'
+        '<a href="http://example.com" target="_blank" rel="noopener noreferrer"> http</a>'
+        '<a href="mailto:test@example.com" target="_blank" rel="noopener noreferrer"> mail</a>'
+        " js data &lt;tag&gt;</p>"
+    )
+
+
+def test_standalone_url_rich_text_paragraph_is_not_prelinked():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "https://example.com/page",
+                    "href": "https://example.com/page",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    assert rendered == "<p>https://example.com/page</p>"
+
+
+def test_standalone_url_rich_text_paragraph_becomes_link_card(monkeypatch):
+    monkeypatch.setattr(contents.linkcard.linkcard, "ogp_cache", {})
+    monkeypatch.setattr(
+        contents.linkcard,
+        "fetch_data",
+        lambda url: {"title": "Example", "description": "Description", "image": ""},
+    )
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "https://example.com/page",
+                    "href": "https://example.com/page",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    linked = contents.linkcard.create([rendered])[0]
+
+    assert '<div class="link-card">' in linked
+    assert '<a href="https://example.com/page" target="_blank">' in linked
+
+
+def test_named_link_rich_text_paragraph_stays_inline_anchor():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "こちら",
+                    "href": "https://example.com",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    assert rendered == (
+        '<p><a href="https://example.com" target="_blank" '
+        'rel="noopener noreferrer">こちら</a></p>'
+    )
+
+
+def test_url_link_inside_sentence_stays_inline_anchor():
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {"text": "see ", "annotations": {}},
+                {
+                    "text": "https://example.com",
+                    "href": "https://example.com",
+                    "annotations": {},
+                },
+            ],
+        }
+    )
+
+    assert rendered == (
+        '<p>see <a href="https://example.com" target="_blank" '
+        'rel="noopener noreferrer">https://example.com</a></p>'
+    )
+
+
+def test_standalone_disallowed_scheme_url_is_not_linked_or_carded(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    rendered = contents.render_block(
+        {
+            "type": "paragraph",
+            "rich_text": [
+                {
+                    "text": "javascript:alert(1)",
+                    "href": "javascript:alert(1)",
+                    "annotations": {},
+                }
+            ],
+        }
+    )
+
+    assert rendered == "<p>javascript:alert(1)</p>"
+    assert contents.linkcard.create([rendered]) == [rendered]
+
+
+def test_normalize_block_preserves_type_specific_display_data():
+    todo = {
+        "id": "todo-1",
+        "type": "to_do",
+        "to_do": {"rich_text": [], "checked": True},
+    }
+    callout = {
+        "id": "callout-1",
+        "type": "callout",
+        "callout": {"rich_text": [], "icon": {"type": "emoji", "emoji": "📌"}},
+    }
+    image = {
+        "id": "image-1",
+        "type": "image",
+        "image": {
+            "type": "external",
+            "external": {"url": "https://example.com/a.png"},
+        },
+    }
+
+    assert contents._normalize_block(todo)["checked"] is True
+    assert contents._normalize_block(callout)["icon"] == {
+        "type": "emoji",
+        "emoji": "📌",
+    }
+    assert contents._normalize_block(image) == {
+        "block_id": "image-1",
+        "type": "image",
+        "image": {"url": "https://example.com/a.png", "source_type": "external"},
+    }
+
+
+def test_cache_schema_version_changed_for_old_cache_regeneration():
+    assert contents.CACHE_SCHEMA_VERSION == 2
+
+
+def test_linkcard_keeps_rich_text_anchor_intact(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = [
+        contents.render_block(
+            {
+                "type": "paragraph",
+                "rich_text": [
+                    {
+                        "text": "Example",
+                        "href": "https://example.com",
+                        "annotations": {},
+                    }
+                ],
+            }
+        )
+    ]
+
+    assert contents.linkcard.create(content) == content
+
+
+
+def test_linkcard_keeps_anchor_with_url_text_intact(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = ['<a href="https://example.com">https://example.com</a>']
+
+    assert contents.linkcard.create(content) == content
+
+
+def test_linkcard_keeps_anchor_with_link_label_intact(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = ['<a href="https://example.com">リンク名</a>']
+
+    assert contents.linkcard.create(content) == content
+
+def test_linkcard_does_not_convert_image_src_url(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = ['<img class="callout-icon" alt="" src="https://example.com/icon.png">']
+
+    assert contents.linkcard.create(content) == content
+
+
+def test_linkcard_converts_standalone_url_outside_html_tags(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+
+    assert contents.linkcard.create(["https://example.com/page"]) == [
+        '<a href="https://example.com/page" target="_blank">https://example.com/page</a>'
+    ]
+
+
+def test_linkcard_handles_mixed_html_tag_and_plain_urls(monkeypatch):
+    monkeypatch.setattr(contents.linkcard, "fetch_data", lambda url: None)
+    content = [
+        '<img class="callout-icon" alt="" src="https://example.com/icon.png"> '
+        "https://example.com/page"
+    ]
+
+    assert contents.linkcard.create(content) == [
+        '<img class="callout-icon" alt="" src="https://example.com/icon.png"> '
+        '<a href="https://example.com/page" target="_blank">https://example.com/page</a>'
+    ]
+
+
+def test_render_callout_icon_falls_back_for_unknown_icon_format():
+    assert contents.render_block(
+        {
+            "type": "callout",
+            "plain_text": "本文のみ",
+            "icon": {"type": "custom", "value": {"unexpected": True}},
+        }
+    ) == '<div class="callout"><div>本文のみ</div></div>'
+
+
+def test_render_callout_icon_validates_image_url_scheme():
+    assert contents.render_block(
+        {
+            "type": "callout",
+            "plain_text": "本文",
+            "icon": {"type": "external", "url": "https://example.com/icon.png"},
+        }
+    ) == (
+        '<div class="callout"><img class="callout-icon" alt="" '
+        'src="https://example.com/icon.png"><div>本文</div></div>'
+    )
+    assert contents.render_block(
+        {
+            "type": "callout",
+            "plain_text": "本文",
+            "icon": {"type": "external", "url": "javascript:alert(1)"},
+        }
+    ) == '<div class="callout"><div>本文</div></div>'
