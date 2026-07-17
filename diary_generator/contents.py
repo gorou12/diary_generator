@@ -17,7 +17,7 @@ from diary_generator.util.linkcard import cache, linkcard
 
 log = logger.get_logger()
 
-CACHE_SCHEMA_VERSION = 3
+CACHE_SCHEMA_VERSION = 4
 JST = timezone(timedelta(hours=9))
 
 
@@ -54,10 +54,18 @@ def get() -> list[DiaryEntry]:
             "generated_at": generated_at,
             "entries": index_entries,
         }
+        current_warnings = _collect_unsupported_nested_block_warnings(detail_entries)
+        previous_warnings = (
+            old_detail_cache.get("unsupported_nested_block_warnings", [])
+            if old_detail_cache
+            else []
+        )
+        _log_new_unsupported_nested_block_warnings(current_warnings, previous_warnings)
         detail_cache = {
             "schema_version": CACHE_SCHEMA_VERSION,
             "generated_at": generated_at,
             "entries": detail_entries,
+            "unsupported_nested_block_warnings": current_warnings,
         }
 
         _write_json(index_path, index_cache)
@@ -572,6 +580,171 @@ def _compose_raw_data_from_caches(
     return raw_data
 
 
+def _collect_unsupported_nested_block_warnings(
+    detail_entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    warnings: list[dict[str, Any]] = []
+    for entry in detail_entries:
+        page_id = entry.get("page_id", "")
+        entry_date = entry.get("entry_date", "")
+        page_name = entry.get("page_name", "")
+        page_url = _notion_page_url(page_id)
+        for topic in entry.get("topics", []):
+            context = {
+                "page_id": page_id,
+                "page_url": page_url,
+                "page_name": page_name,
+                "entry_date": entry_date,
+                "topic_title": topic.get("title", ""),
+                "topic_id": topic.get("topic_id", ""),
+            }
+            _collect_unsupported_nested_block_warnings_in_blocks(
+                topic.get("blocks", []), context, warnings
+            )
+    warnings.sort(key=lambda item: item.get("fingerprint", ""))
+    return warnings
+
+
+def _collect_unsupported_nested_block_warnings_in_blocks(
+    blocks: list[dict[str, Any]],
+    context: dict[str, str],
+    warnings: list[dict[str, Any]],
+) -> None:
+    for block in blocks:
+        children = block.get("children")
+        if not isinstance(children, list) or not children:
+            continue
+
+        parent_type = block.get("type", "")
+        parent_id = _block_id(block)
+        if _is_list_item_block(block):
+            for child in children:
+                if _is_list_item_block(child):
+                    _collect_unsupported_nested_block_warnings_in_blocks(
+                        [child], context, warnings
+                    )
+                    continue
+                warnings.append(
+                    _build_unsupported_nested_block_warning(
+                        context=context,
+                        warning_type="unsupported_list_item_child",
+                        parent_id=parent_id,
+                        parent_type=parent_type,
+                        child=child,
+                    )
+                )
+            continue
+
+        for child in children:
+            warnings.append(
+                _build_unsupported_nested_block_warning(
+                    context=context,
+                    warning_type="unsupported_non_list_block_children",
+                    parent_id=parent_id,
+                    parent_type=parent_type,
+                    child=child,
+                    unsupported_block_child_count=len(children),
+                )
+            )
+
+
+def _build_unsupported_nested_block_warning(
+    *,
+    context: dict[str, str],
+    warning_type: str,
+    parent_id: str,
+    parent_type: str,
+    child: dict[str, Any],
+    unsupported_block_child_count: int | None = None,
+) -> dict[str, Any]:
+    child_id = _block_id(child)
+    child_type = child.get("type", "")
+    warning = {
+        **context,
+        "warning_type": warning_type,
+        "parent_block_id": parent_id,
+        "parent_type": parent_type,
+        "child_block_id": child_id,
+        "child_type": child_type,
+    }
+    if unsupported_block_child_count is not None:
+        warning["unsupported_block_id"] = parent_id
+        warning["unsupported_block_type"] = parent_type
+        warning["unsupported_block_child_count"] = unsupported_block_child_count
+    warning["fingerprint"] = "|".join(
+        [
+            warning_type,
+            context.get("page_id", ""),
+            context.get("topic_id", ""),
+            parent_id,
+            parent_type,
+            child_id,
+            child_type,
+        ]
+    )
+    return warning
+
+
+def _log_new_unsupported_nested_block_warnings(
+    current_warnings: list[dict[str, Any]],
+    previous_warnings: list[dict[str, Any]],
+) -> None:
+    previous_fingerprints = {
+        warning.get("fingerprint", "") for warning in previous_warnings
+    }
+    for warning in current_warnings:
+        if warning.get("fingerprint", "") in previous_fingerprints:
+            continue
+        log.warning(
+            "⚠️ Unsupported nested Notion block was skipped:\n"
+            "warning_type=%s\n"
+            "entry_date=%s\n"
+            "page_id=%s\n"
+            "page_url=%s\n"
+            "topic_title=%s\n"
+            "topic_id=%s\n"
+            "parent_block_id=%s\n"
+            "parent_type=%s\n"
+            "child_block_id=%s\n"
+            "child_type=%s%s",
+            warning.get("warning_type", ""),
+            warning.get("entry_date", ""),
+            warning.get("page_id", ""),
+            warning.get("page_url", ""),
+            warning.get("topic_title", ""),
+            warning.get("topic_id", ""),
+            warning.get("parent_block_id", ""),
+            warning.get("parent_type", ""),
+            warning.get("child_block_id", ""),
+            warning.get("child_type", ""),
+            _format_unsupported_block_details(warning),
+        )
+
+
+def _format_unsupported_block_details(warning: dict[str, Any]) -> str:
+    if "unsupported_block_child_count" not in warning:
+        return ""
+    return (
+        "\nunsupported_block_id=%s"
+        "\nunsupported_block_type=%s"
+        "\nunsupported_block_child_count=%s"
+        % (
+            warning.get("unsupported_block_id", ""),
+            warning.get("unsupported_block_type", ""),
+            warning.get("unsupported_block_child_count", ""),
+        )
+    )
+
+
+def _block_id(block: dict[str, Any]) -> str:
+    return str(block.get("block_id") or block.get("id") or "")
+
+
+def _notion_page_url(page_id: str) -> str:
+    compact_id = page_id.replace("-", "")
+    return f"https://www.notion.so/{compact_id}" if compact_id else ""
+
+
 def _build_topic_content(topic: dict[str, Any]) -> list[str]:
     return render_blocks(topic.get("blocks", []))
 
@@ -615,12 +788,7 @@ def _render_list_item_children(block: dict[str, Any]) -> str:
     if not isinstance(children, list) or not children:
         return ""
 
-    list_children = []
-    for child in children:
-        if _is_list_item_block(child):
-            list_children.append(child)
-        else:
-            _warn_skipped_list_item_child(block, child)
+    list_children = [child for child in children if _is_list_item_block(child)]
     return "".join(render_blocks(list_children))
 
 
@@ -628,35 +796,7 @@ def _is_list_item_block(block: dict[str, Any]) -> bool:
     return block.get("type") in {"bulleted_list_item", "numbered_list_item"}
 
 
-def _warn_skipped_list_item_child(
-    parent: dict[str, Any], child: dict[str, Any]
-) -> None:
-    log.warning(
-        "⚠️ Notion list item has unsupported child block; child HTML output was skipped: "
-        "parent_block_id=%s parent_type=%s child_block_id=%s child_type=%s",
-        parent.get("block_id") or parent.get("id", ""),
-        parent.get("type", ""),
-        child.get("block_id") or child.get("id", ""),
-        child.get("type", ""),
-    )
-
-
-def _warn_if_unsupported_child_blocks(block: dict[str, Any]) -> None:
-    children = block.get("children")
-    if not isinstance(children, list) or not children or _is_list_item_block(block):
-        return
-
-    log.warning(
-        "⚠️ Notion block has unsupported child blocks; child HTML output was skipped: "
-        "block_id=%s type=%s child_count=%d",
-        block.get("block_id") or block.get("id", ""),
-        block.get("type", ""),
-        len(children),
-    )
-
-
 def render_block(block: dict[str, Any]) -> str | None:
-    _warn_if_unsupported_child_blocks(block)
     block_type = block.get("type")
     match block_type:
         case "paragraph":

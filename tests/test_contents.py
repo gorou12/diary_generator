@@ -382,7 +382,7 @@ def test_normalize_block_preserves_type_specific_display_data():
 
 
 def test_cache_schema_version_changed_for_old_cache_regeneration():
-    assert contents.CACHE_SCHEMA_VERSION == 3
+    assert contents.CACHE_SCHEMA_VERSION == 4
 
 
 def test_linkcard_keeps_rich_text_anchor_intact(monkeypatch):
@@ -639,9 +639,7 @@ def test_render_numbered_parent_with_bulleted_grandchild_and_non_list_children()
                 ],
             }
         ]
-    ) == [
-        "<ol><li>1段目<ul><li>2段目<ul><li>3段目</li></ul></li></ul></li></ol>"
-    ]
+    ) == ["<ol><li>1段目<ul><li>2段目<ul><li>3段目</li></ul></li></ul></li></ol>"]
 
 
 def test_list_item_paragraph_child_is_hidden_and_warns(caplog):
@@ -654,16 +652,17 @@ def test_list_item_paragraph_child_is_hidden_and_warns(caplog):
                 "type": "bulleted_list_item",
                 "plain_text": "1段目",
                 "children": [
-                    {"block_id": "paragraph-1", "type": "paragraph", "plain_text": "補足"},
+                    {
+                        "block_id": "paragraph-1",
+                        "type": "paragraph",
+                        "plain_text": "補足",
+                    },
                 ],
             }
         ]
     ) == ["<ul><li>1段目</li></ul>"]
 
-    assert "unsupported child block" in caplog.text
-    assert "parent_block_id=list-1" in caplog.text
-    assert "child_block_id=paragraph-1" in caplog.text
-    assert "child_type=paragraph" in caplog.text
+    assert caplog.text == ""
 
 
 def test_list_item_to_do_child_is_hidden_and_warns(caplog):
@@ -687,10 +686,7 @@ def test_list_item_to_do_child_is_hidden_and_warns(caplog):
         ]
     ) == ["<ul><li>1段目</li></ul>"]
 
-    assert "unsupported child block" in caplog.text
-    assert "parent_block_id=list-1" in caplog.text
-    assert "child_block_id=todo-1" in caplog.text
-    assert "child_type=to_do" in caplog.text
+    assert caplog.text == ""
 
 
 def test_unknown_child_block_does_not_break_rendering(monkeypatch, caplog):
@@ -715,10 +711,7 @@ def test_unknown_child_block_does_not_break_rendering(monkeypatch, caplog):
     topics, _ = contents._fetch_diary_page("page-1", NOW)
 
     assert contents._build_topic_content(topics[0]) == ["<ul><li>1段目</li></ul>"]
-    assert "unsupported child block" in caplog.text
-    assert "parent_block_id=parent" in caplog.text
-    assert "child_block_id=unknown" in caplog.text
-    assert "child_type=unsupported" in caplog.text
+    assert caplog.text == ""
 
 
 def test_non_list_block_children_emit_warning_without_rendering(caplog):
@@ -737,5 +730,201 @@ def test_non_list_block_children_emit_warning_without_rendering(caplog):
         ]
     ) == ["<p>親段落</p>"]
 
-    assert "unsupported child blocks" in caplog.text
-    assert "block_id=paragraph-1" in caplog.text
+    assert caplog.text == ""
+
+
+def _detail_entries_with_blocks(
+    blocks, *, page_id="page-1", topic_id="topic-1", title="今日の記録"
+):
+    return [
+        {
+            "page_id": page_id,
+            "page_name": "20260717",
+            "entry_date": "2026-07-17",
+            "topics": [
+                {
+                    "topic_id": topic_id,
+                    "title": title,
+                    "blocks": blocks,
+                }
+            ],
+        }
+    ]
+
+
+def _collect_warnings(blocks):
+    return contents._collect_unsupported_nested_block_warnings(
+        _detail_entries_with_blocks(blocks)
+    )
+
+
+def test_unsupported_nested_warning_contains_entry_topic_and_block_context(caplog):
+    warnings = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "plain_text": "1段目",
+                "children": [
+                    {
+                        "block_id": "paragraph-1",
+                        "type": "paragraph",
+                        "plain_text": "補足",
+                    },
+                ],
+            }
+        ]
+    )
+
+    assert len(warnings) == 1
+    warning = warnings[0]
+    assert warning["entry_date"] == "2026-07-17"
+    assert warning["topic_title"] == "今日の記録"
+    assert warning["topic_id"] == "topic-1"
+    assert warning["parent_block_id"] == "list-1"
+    assert warning["parent_type"] == "bulleted_list_item"
+    assert warning["child_block_id"] == "paragraph-1"
+    assert warning["child_type"] == "paragraph"
+
+    caplog.set_level(logging.WARNING, logger="diary_system")
+    contents._log_new_unsupported_nested_block_warnings(warnings, [])
+    assert "entry_date=2026-07-17" in caplog.text
+    assert "topic_title=今日の記録" in caplog.text
+    assert "topic_id=topic-1" in caplog.text
+    assert "parent_block_id=list-1" in caplog.text
+    assert "parent_type=bulleted_list_item" in caplog.text
+    assert "child_block_id=paragraph-1" in caplog.text
+    assert "child_type=paragraph" in caplog.text
+
+
+def test_first_detection_logs_warning_and_same_warning_next_time_is_suppressed(caplog):
+    warnings = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [{"block_id": "paragraph-1", "type": "paragraph"}],
+            }
+        ]
+    )
+    caplog.set_level(logging.WARNING, logger="diary_system")
+    contents._log_new_unsupported_nested_block_warnings(warnings, [])
+    assert "child_block_id=paragraph-1" in caplog.text
+
+    caplog.clear()
+    contents._log_new_unsupported_nested_block_warnings(warnings, warnings)
+    assert caplog.text == ""
+
+
+def test_added_unsupported_child_logs_only_added_warning(caplog):
+    previous = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [{"block_id": "paragraph-1", "type": "paragraph"}],
+            }
+        ]
+    )
+    current = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [
+                    {"block_id": "paragraph-1", "type": "paragraph"},
+                    {"block_id": "todo-1", "type": "to_do"},
+                ],
+            }
+        ]
+    )
+    caplog.set_level(logging.WARNING, logger="diary_system")
+    contents._log_new_unsupported_nested_block_warnings(current, previous)
+    assert "child_block_id=todo-1" in caplog.text
+    assert "child_block_id=paragraph-1" not in caplog.text
+
+
+def test_block_type_change_is_new_warning(caplog):
+    previous = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [{"block_id": "child-1", "type": "paragraph"}],
+            }
+        ]
+    )
+    current = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [{"block_id": "child-1", "type": "to_do"}],
+            }
+        ]
+    )
+    caplog.set_level(logging.WARNING, logger="diary_system")
+    contents._log_new_unsupported_nested_block_warnings(current, previous)
+    assert "child_block_id=child-1" in caplog.text
+    assert "child_type=to_do" in caplog.text
+
+
+def test_resolved_warning_is_removed_from_current_cache_and_reappears_as_new(caplog):
+    previous = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [{"block_id": "child-1", "type": "paragraph"}],
+            }
+        ]
+    )
+    resolved = _collect_warnings(
+        [
+            {
+                "block_id": "list-1",
+                "type": "bulleted_list_item",
+                "children": [{"block_id": "child-list", "type": "bulleted_list_item"}],
+            }
+        ]
+    )
+    assert resolved == []
+
+    reappeared = previous
+    caplog.set_level(logging.WARNING, logger="diary_system")
+    contents._log_new_unsupported_nested_block_warnings(reappeared, resolved)
+    assert "child_block_id=child-1" in caplog.text
+
+
+def test_non_list_block_children_warning_has_child_count_and_html_still_renders():
+    blocks = [
+        {
+            "block_id": "paragraph-1",
+            "type": "paragraph",
+            "plain_text": "親段落",
+            "children": [{"block_id": "paragraph-2", "type": "paragraph"}],
+        }
+    ]
+    warnings = _collect_warnings(blocks)
+    assert warnings[0]["unsupported_block_id"] == "paragraph-1"
+    assert warnings[0]["unsupported_block_type"] == "paragraph"
+    assert warnings[0]["unsupported_block_child_count"] == 1
+    assert contents.render_blocks(blocks) == ["<p>親段落</p>"]
+
+
+def test_nested_normal_bulleted_and_numbered_lists_do_not_warn():
+    assert (
+        _collect_warnings(
+            [
+                {
+                    "block_id": "list-1",
+                    "type": "bulleted_list_item",
+                    "children": [
+                        {"block_id": "list-2", "type": "numbered_list_item"},
+                        {"block_id": "list-3", "type": "bulleted_list_item"},
+                    ],
+                }
+            ]
+        )
+        == []
+    )
