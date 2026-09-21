@@ -1,11 +1,11 @@
-# Production deployment
+# 本番デプロイ
 
-## Overview
+## 概要
 
-Production deployment is initiated by GitHub Actions.
+本番デプロイはGitHub Actionsから実行する。
 
 ```text
-push to main
+mainへpush
     |
     v
 GitHub Actions
@@ -15,6 +15,7 @@ GitHub Actions
 pokete1_vps2
 /home/gorou12/diary_generator
     |
+    +-- originをHTTPSへ正規化
     +-- git pull --ff-only origin main
     +-- uv sync
     +-- systemctl start diary-generator.service
@@ -23,10 +24,11 @@ pokete1_vps2
             +-- rsync output/ -> /var/www/html/diary/
 ```
 
-The application repository owns the GitHub Actions workflow and the deploy script.
-The VPS-side systemd/nginx/sudoers configuration is owned by `gorou12/pokete-network`.
+GitHub Actions workflowとアプリ側のデプロイスクリプトはこのリポジトリを正とする。
 
-## Trigger
+VPS側のsystemd / nginx / sudoers設定は `gorou12/pokete-network` を正とする。
+
+## デプロイトリガー
 
 Workflow:
 
@@ -34,53 +36,102 @@ Workflow:
 .github/workflows/main.yml
 ```
 
-Automatic deployment runs on pushes to `main`.
+通常は `main` へのpushで自動デプロイする。
 
-Documentation-only and deployment-definition-only changes are excluded from the automatic trigger:
+以下だけを変更したpushでは、自動デプロイを起動しない。
 
 - `docs/**`
 - `README.md`
 - `.github/**`
 - `scripts/deploy_vps.sh`
 
-This prevents a deployment workflow edit from immediately executing against a VPS whose receiving configuration may not yet have been updated.
+デプロイ基盤自体を変更しただけで、VPS側の準備が終わる前に新しいWorkflowが自動実行されるのを避けるため。
 
-A manual `workflow_dispatch` trigger is also available. Use it after changing deployment infrastructure to verify the connection and deployment path.
+また `workflow_dispatch` に対応しているため、GitHub Actions画面から手動実行できる。
+デプロイ設定を変更した直後の確認には手動実行を使う。
 
-## GitHub Actions secrets
+## GitHub Actions Secrets
 
-The repository requires these Actions secrets:
+このリポジトリには次のActions Secretsが必要。
 
 - `VPS_HOST`
 - `VPS_USER`
 - `SSH_PRIVATE_KEY`
 
-Values must never be committed to Git.
+実値はGitへ保存しない。
 
-`SSH_PRIVATE_KEY` is the private key used by GitHub Actions to connect to the production VPS.
-Its matching public key must be present in:
+`SSH_PRIVATE_KEY` はGitHub Actionsから本番VPSへ接続する秘密鍵。
+対応する公開鍵をVPSの次のファイルへ登録する。
 
 ```text
 /home/gorou12/.ssh/authorized_keys
 ```
 
-on the VPS.
+VPS再構築時には安全なmigration backup等から秘密鍵をGitHub Actions Secretsへ復旧してよいが、秘密鍵をリポジトリやドキュメントへ保存しない。
 
-The private key may be restored from a secure migration backup when rebuilding GitHub Actions, but it must remain only in GitHub Actions Secrets / secure backup storage.
+## SSHは2経路ある
 
-## VPS requirements
+このデプロイではSSH/Git接続を混同しない。
 
-The VPS must provide:
+### 1. GitHub Actions -> VPS
+
+GitHub Actions Secretsの:
+
+```text
+SSH_PRIVATE_KEY
+```
+
+を使う。
+
+この鍵が間違っている場合、VPSへのSSH接続そのものが失敗する。
+
+### 2. VPS -> GitHub
+
+VPS上のcheckoutを更新するための接続。
+
+`diary_generator` はpublic repositoryなので、GitHubへのSSH鍵は使わずHTTPSでpullする。
+
+Workflowでは毎回originを次へ正規化する。
+
+```text
+https://github.com/gorou12/diary_generator.git
+```
+
+そのためVPS上にGitHub用SSH秘密鍵は不要。
+
+確認:
+
+```bash
+cd /home/gorou12/diary_generator
+git remote -v
+```
+
+もし次のようになっていた場合:
+
+```text
+git@github.com:gorou12/diary_generator.git
+```
+
+手動で直す場合は:
+
+```bash
+git remote set-url origin https://github.com/gorou12/diary_generator.git
+git remote -v
+```
+
+## VPS側の要件
+
+VPSには次が必要。
 
 - user: `gorou12`
 - checkout: `/home/gorou12/diary_generator`
 - uv: `/home/gorou12/.local/bin/uv`
 - systemd unit: `diary-generator.service`
 - publication directory: `/var/www/html/diary`
-- passwordless sudo permission limited to:
+- passwordなしsudoを次の1コマンドに限定して許可
   - `/usr/bin/systemctl start diary-generator.service`
 
-The VPS-side configuration is documented and managed in:
+VPS側の詳細は:
 
 ```text
 gorou12/pokete-network
@@ -89,63 +140,162 @@ config/host/systemd/
 config/host/sudoers/
 ```
 
-## Deployment script
+を参照。
 
-`scripts/deploy_vps.sh` is executed on the VPS after `git pull`.
+## デプロイスクリプト
 
-It performs:
+`scripts/deploy_vps.sh` はVPS上で `git pull` 後に実行する。
+
+処理:
 
 1. `uv sync`
 2. `sudo -n /usr/bin/systemctl start diary-generator.service`
 
-HTML generation and rsync are intentionally not duplicated here.
-They are defined once in the systemd service managed by `pokete-network`.
+HTML生成とrsyncはこのスクリプトへ重複記載しない。
+`pokete-network` で管理するsystemd serviceへ一本化する。
 
-## Why systemd owns generation/publishing
+## systemdへ生成・公開処理を集約する理由
 
-The same generation process is used by:
+同じ処理を:
 
-- the hourly timer
-- GitHub Actions deployments
-- manual runs
+- 毎時timer
+- GitHub Actions deploy
+- 手動実行
 
-Keeping generation and publication in one systemd unit avoids three slightly different command sequences.
+から利用する。
 
-It also keeps execution logs in journald:
+生成・公開手順をsystemd unitへ集約することで、複数箇所でコマンド列が少しずつ違う状態を避ける。
+
+実行ログはjournaldで確認する。
 
 ```bash
 journalctl -u diary-generator.service -n 100 --no-pager
 ```
 
-## Manual production test
+## 本番checkoutをきれいに作り直す
 
-After the VPS-side configuration is updated, run the `Deploy to VPS` workflow manually from GitHub Actions.
+VPS上のcheckout自体がおかしい、origin設定や過去の作業痕跡をまとめて捨てたい場合に使う。
 
-On the VPS, verify:
+### 1. timerを一時停止
+
+```bash
+sudo systemctl stop diary-generator.timer
+```
+
+### 2. Git管理外データを退避
+
+最低限 `.env` を退避する。
+
+```bash
+cd /home/gorou12
+
+mkdir -p diary-generator-reinstall-backup
+cp -a diary_generator/.env diary-generator-reinstall-backup/ 2>/dev/null || true
+```
+
+必要なら再取得時間短縮のため `cache/` も退避する。
+
+```bash
+cp -a diary_generator/cache diary-generator-reinstall-backup/ 2>/dev/null || true
+```
+
+`output/` は再生成できるため通常は不要。
+
+### 3. 旧checkoutを退避
+
+すぐ削除せず名前を変える。
+
+```bash
+mv diary_generator diary_generator.old
+```
+
+### 4. HTTPSでclone
+
+```bash
+git clone \
+  https://github.com/gorou12/diary_generator.git \
+  /home/gorou12/diary_generator
+```
+
+### 5. secret等を戻す
+
+```bash
+cp -a \
+  /home/gorou12/diary-generator-reinstall-backup/.env \
+  /home/gorou12/diary_generator/.env
+```
+
+cacheも退避した場合:
+
+```bash
+cp -a \
+  /home/gorou12/diary-generator-reinstall-backup/cache \
+  /home/gorou12/diary_generator/cache
+```
+
+### 6. 依存関係・生成を確認
+
+```bash
+cd /home/gorou12/diary_generator
+/home/gorou12/.local/bin/uv sync
+
+sudo -n /usr/bin/systemctl start diary-generator.service
+
+journalctl \
+  -u diary-generator.service \
+  -n 100 \
+  --no-pager
+```
+
+サイトも確認する。
+
+### 7. timerを戻す
+
+```bash
+sudo systemctl start diary-generator.timer
+systemctl status diary-generator.timer --no-pager
+```
+
+新checkoutで問題ないことを確認してから:
+
+```text
+/home/gorou12/diary_generator.old
+/home/gorou12/diary-generator-reinstall-backup
+```
+
+を削除する。
+
+## 手動本番テスト
+
+VPS側の設定更新後、GitHubのActions画面から `Deploy to VPS` を手動実行する。
+
+VPS側:
 
 ```bash
 systemctl status diary-generator.timer --no-pager
 journalctl -u diary-generator.service -n 100 --no-pager
 ```
 
-Then confirm the published site.
+を確認し、最後に公開サイトを確認する。
 
-## SSH troubleshooting
+## トラブルシュート
 
-The deployment uses two separate Git relationships:
+### `git@github.com: Permission denied (publickey)`
 
-1. GitHub Actions -> VPS
-   - uses `SSH_PRIVATE_KEY`
-   - matching public key is in VPS `authorized_keys`
+GitHub ActionsからVPSへは接続できているが、VPS上のrepository originがSSH URLになっていると発生する。
 
-2. VPS -> GitHub for `git pull`
-   - this repository is public, so an HTTPS `origin` can pull without a GitHub SSH key
-
-Check the VPS repository remote with:
+次で修正する。
 
 ```bash
 cd /home/gorou12/diary_generator
-git remote -v
+
+git remote set-url \
+  origin \
+  https://github.com/gorou12/diary_generator.git
+
+git pull --ff-only origin main
 ```
 
-Do not print or paste the private key while troubleshooting.
+このエラーだけなら、GitHub Actionsの `SSH_PRIVATE_KEY` を疑う必要はない。
+
+秘密鍵そのものはトラブルシュート時にも表示・貼付しない。
