@@ -25,8 +25,13 @@ uv run pre-commit install
 
 Run local debug server: `uv run python -m http.server 8000 --directory output`
 
+## DEPLOYMENT
+
+Production deployment is performed by GitHub Actions over SSH.
+
+See [docs/deployment.md](docs/deployment.md).
+
 ## TOPICS
 
-Editor: VSCode
+Editor: VSCode  
 Linter: ruff
-

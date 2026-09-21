@@ -1,37 +1,36 @@
 name: Deploy to VPS
+
 on:
   push:
     branches:
-      - main  # 変更を適用するブランチ
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
+      - ".github/**"
+      - "scripts/deploy_vps.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diary-generator-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
 
+    steps:
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~gorou12/diary_generator
-            find . -name "*.pyc" -exec rm -f {} +
-            find . -name "__pycache__" -exec rm -rf {} +
-            git pull origin main
-      
-      - name: Generate HTML
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd ~gorou12/diary_generator
-            /home/gorou12/.local/bin/uv sync
-            /home/gorou12/.local/bin/uv run -m scripts.generate
-            rsync -a --delete output/ /var/www/html/diary/
+            set -eu
+            cd /home/gorou12/diary_generator
+            git pull --ff-only origin main
+            ./scripts/deploy_vps.sh
