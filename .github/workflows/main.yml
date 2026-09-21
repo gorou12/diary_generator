@@ -32,5 +32,6 @@ jobs:
           script: |
             set -eu
             cd /home/gorou12/diary_generator
+            git remote set-url origin https://github.com/gorou12/diary_generator.git
             git pull --ff-only origin main
             ./scripts/deploy_vps.sh
