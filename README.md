@@ -25,17 +25,17 @@ uv run pre-commit install
 
 ### ローカル開発
 
-日記生成: `uv run python -m scripts.generate`
-├─ 日記データキャッシュを使う: `--use-cache`
+日記生成: `uv run python -m scripts.generate`  
+├─ 日記データキャッシュを使う: `--use-cache`  
 └─ スラッグキャッシュを使う: `--use-topic-slug-cache`
 
 サムネイル一括(再)生成: `uv run python -m scripts.generate_thumbnails`
 
 デバッグ用サーバー起動: `uv run python -m http.server 8000 --directory output`
 
-参考: パッケージ更新: `uv sync --upgrade`
-├─ VSCodeを開いているとvenvを掴んでいて面倒なので、ターミナルから更新するといい
-├─ pyproject.toml にて リリースから1週間以上経過したパッケージだけ入れられるようにしてある
+参考: パッケージ更新: `uv sync --upgrade`  
+├─ VSCodeを開いているとvenvを掴んでいて面倒なので、ターミナルから更新するといい  
+├─ pyproject.toml にて リリースから1週間以上経過したパッケージだけ入れられるようにしてある  
 └─ 緊急で入れないといけないときの例: `uv sync --upgrade --exclude-newer-package "{flask=P0D}"`
 
 参考: uv自体の更新: `uv self update`
