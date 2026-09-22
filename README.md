@@ -1,8 +1,8 @@
 # DIARY GENERATOR
 
-## HOW TO DEVELOPMENT
+## 開発方法
 
-try this
+### 初期設定
 
 ```powershell
 # install uv on Windows PowerShell
@@ -23,15 +23,30 @@ uv sync
 uv run pre-commit install
 ```
 
-Run local debug server: `uv run python -m http.server 8000 --directory output`
+### ローカル開発
 
-## DEPLOYMENT
+日記生成: `uv run python -m scripts.generate`
+├─ 日記データキャッシュを使う: `--use-cache`
+└─ スラッグキャッシュを使う: `--use-topic-slug-cache`
 
-Production deployment is performed by GitHub Actions over SSH.
+サムネイル一括(再)生成: `uv run python -m scripts.generate_thumbnails`
 
-See [docs/deployment.md](docs/deployment.md).
+デバッグ用サーバー起動: `uv run python -m http.server 8000 --directory output`
 
-## TOPICS
+参考: パッケージ更新: `uv sync --upgrade`
+├─ VSCodeを開いているとvenvを掴んでいて面倒なので、ターミナルから更新するといい
+├─ pyproject.toml にて リリースから1週間以上経過したパッケージだけ入れられるようにしてある
+└─ 緊急で入れないといけないときの例: `uv sync --upgrade --exclude-newer-package "{flask=P0D}"`
+
+参考: uv自体の更新: `uv self update`
+
+## デプロイ
+
+本番デプロイはGitHub Actionsから行う。
+
+→ [docs/deployment.md](docs/deployment.md)
+
+## 前提技術
 
 Editor: VSCode  
 Linter: ruff
