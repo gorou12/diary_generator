@@ -866,6 +866,12 @@ def test_top_topics_and_dates_pagination(
     out = generated_site.output_dir
 
     assert soup(out / first).select_one(f".pagination a[href='{second}']") is not None
+    # 1ページ目は「前へ」の位置に空要素を置き、「次へ」が右端に寄る（Issue #26）
+    first_children = (
+        soup(out / first).select_one(".pagination").find_all(recursive=False)
+    )
+    assert [child.name for child in first_children] == ["span", "a"]
+    assert "empty" in first_children[0].get("class", [])
     assert (
         soup(out / second).select_one(f".pagination a[href='{second_prev}']")
         is not None
