@@ -41,6 +41,9 @@ def generate(diary_entries: list[DiaryEntry]):
                 "topics.html" if page_num == 2 else f"topics_{page_num - 1}.html"
             )
             pagination += f'<a href="{prev_link}">« 前へ</a> '
+        else:
+            # 1ページ目は「前へ」の代わりに空要素を置き、「次へ」を右端に寄せる
+            pagination += '<span class="empty"></span> '
         if page_num < total_pages:
             next_link = f"topics_{page_num + 1}.html"
             pagination += f'<a href="{next_link}">次へ »</a>'
